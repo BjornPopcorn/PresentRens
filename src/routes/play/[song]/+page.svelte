@@ -1,10 +1,8 @@
 <script>
-  export let data;
+  const { data } = $props();
 
-  // Supabase song data
   const song = data.song;
 
-  // Random gradient generator
   const gradients = [
     "linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)",
     "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)",
