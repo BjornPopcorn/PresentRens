@@ -4,26 +4,16 @@
 
   // Stronger, more dramatic gradients
   const gradients = [
-  // Neon & punchy
   "linear-gradient(135deg, #ff5f6d 0%, #ffc371 100%)",
   "linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)",
   "linear-gradient(135deg, #f953c6 0%, #b91d73 100%)",
   "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
   "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-
-  // Deep & dramatic
   "linear-gradient(135deg, #6a11cb 0%, #2575fc 100%)",
   "linear-gradient(135deg, #009fff 0%, #ec2f4b 100%)",
   "linear-gradient(135deg, #ff9966 0%, #ff5e62 100%)",
   "linear-gradient(135deg, #f12711 0%, #f5af19 100%)",
-  "linear-gradient(135deg, #8360c3 0%, #2ebf91 100%)",
-
-  // Soft but still clean
-  "linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)",
-  "linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)",
-  "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
-  "linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)",
-  "linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)"
+  "linear-gradient(135deg, #8360c3 0%, #2ebf91 100%)"
 ];
 
 
