@@ -48,17 +48,6 @@
     box-shadow: 0 20px 40px rgba(0,0,0,0.25);
   }
 
-
-
-    /* Removed border completely */
-    border: none;
-
-    /* Premium glass effect */
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.1),
-      0 20px 40px rgba(0,0,0,0.25);
-  }
-
   p {
     color: white;
     font-size: 1.2rem;
