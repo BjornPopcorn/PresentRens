@@ -1,4 +1,4 @@
-import { supabase } from '../../supabaseClient.js';
+import { supabase } from '../../lib/supabaseClient.js';
 import { error } from '@sveltejs/kit';
 
 export async function load({ params }) {
