@@ -12,7 +12,7 @@ export async function load({ params }) {
     .single();
 
   if (err || !data) {
-    throw error(404, 'Song not found');
+    throw error(404, 'Song not found :(');
   }
 
   return { song: data };
