@@ -1,7 +1,8 @@
 <script>
-  import { onMount } from 'svelte';
+  export let data;
 
-  let gradient;
+  // Supabase song data
+  const song = data.song;
 
   // Random gradient generator
   const gradients = [
@@ -12,9 +13,7 @@
     "linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)"
   ];
 
-  onMount(() => {
-    gradient = gradients[Math.floor(Math.random() * gradients.length)];
-  });
+  let gradient = gradients[Math.floor(Math.random() * gradients.length)];
 </script>
 
 <style>
@@ -61,10 +60,9 @@
 
 <div class="page" style="--gradient: {gradient}">
   <div class="glass">
-    <h1>Welcome</h1>
+    <h1>{song.title}</h1>
     <p>Press play below</p>
 
-    <!-- Your audio player -->
-    <audio controls src="{yourAudioUrl}"></audio>
+    <audio controls src={song.audio_url}></audio>
   </div>
 </div>
