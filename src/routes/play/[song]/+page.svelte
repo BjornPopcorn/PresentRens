@@ -1,6 +1,5 @@
 <script>
   const { data } = $props();
-
   const song = data.song;
 
   const gradients = [
