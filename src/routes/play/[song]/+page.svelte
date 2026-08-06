@@ -2,12 +2,13 @@
   const { data } = $props();
   const song = data.song;
 
+  // Stronger, more dramatic gradients
   const gradients = [
-    "linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)",
-    "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)",
-    "linear-gradient(135deg, #f6d365 0%, #fda085 100%)",
-    "linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)",
-    "linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)"
+    "linear-gradient(135deg, #ff5f6d 0%, #ffc371 100%)",
+    "linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)",
+    "linear-gradient(135deg, #f953c6 0%, #b91d73 100%)",
+    "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+    "linear-gradient(135deg, #fa709a 0%, #fee140 100%)"
   ];
 
   let gradient = gradients[Math.floor(Math.random() * gradients.length)];
@@ -25,22 +26,21 @@
   }
 
   .glass {
-    backdrop-filter: blur(20px);
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 20px;
+    backdrop-filter: blur(30px);
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 24px;
     padding: 3rem;
     max-width: 500px;
     width: 100%;
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-  }
 
-  h1 {
-    color: white;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
+    /* Removed border completely */
+    border: none;
+
+    /* Premium glass effect */
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+      0 20px 40px rgba(0,0,0,0.25);
   }
 
   p {
@@ -57,10 +57,9 @@
 
 <div class="page" style="--gradient: {gradient}">
   <div class="glass">
-    <h1>{song.title}</h1>
+    <!-- Title removed -->
     <p>Press play below</p>
 
     <audio controls src={song.audio_url}></audio>
   </div>
 </div>
-<!-- trigger production deploy again -->
