@@ -3,15 +3,12 @@
   const song = data.song;
 
   // Stronger, more dramatic gradients
-  const gradients = [
-    "linear-gradient(135deg, #ff5f6d 0%, #ffc371 100%)",
-    "linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)",
-    "linear-gradient(135deg, #f953c6 0%, #b91d73 100%)",
-    "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-    "linear-gradient(135deg, #fa709a 0%, #fee140 100%)"
-  ];
+  function randomColor() {
+  return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+  }
 
-  let gradient = gradients[Math.floor(Math.random() * gradients.length)];
+  let gradient = `linear-gradient(135deg, ${randomColor()} 0%, ${randomColor()} 100%)`;
+
 </script>
 
 <style>
