@@ -41,6 +41,15 @@
     width: 100%;
     text-align: center;
 
+    /* No border at all */
+    border: none;
+
+    /* Clean premium glass without white outline */
+    box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+  }
+
+
+
     /* Removed border completely */
     border: none;
 
