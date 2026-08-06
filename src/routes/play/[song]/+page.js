@@ -3,6 +3,7 @@ import { error } from '@sveltejs/kit';
 
 export async function load({ params }) {
   const { song } = params;
+  console.log("PARAM SONG:", song);
 
   const { data, err } = await supabase
     .from('songs')
