@@ -1,22 +1,18 @@
-import { supabase } from '$lib/supabaseClient';
+import { supabase } from '../../../supabaseClient.js';
+import { error } from '@sveltejs/kit';
 
 export async function load({ params }) {
-  const songId = params.song;
+  const { song } = params;
 
-  const filePath = `${songId}/metadata.json`;
-
-  const { data: file, error } = await supabase
-    .storage
+  const { data, err } = await supabase
     .from('songs')
-    .download(filePath);
+    .select('*')
+    .eq('id', song)
+    .single();
 
-  if (error) {
-    console.error("Supabase storage error:", error);
-    return { songId, metadata: null };
+  if (err || !data) {
+    throw error(404, 'Song not found');
   }
 
-  const text = await file.text();
-  const metadata = JSON.parse(text);
-
-  return { songId, metadata };
+  return { song: data };
 }
