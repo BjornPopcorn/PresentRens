@@ -58,6 +58,30 @@
     width: 100%;
     margin-top: 1rem;
   }
+    /* Mobile fixes */
+  @media (max-width: 600px) {
+    .glass {
+      padding: 1.5rem;              /* smaller padding */
+      border-radius: 16px;          /* smaller radius */
+      backdrop-filter: blur(15px);  /* lighter blur */
+      box-shadow: 0 10px 20px rgba(0,0,0,0.25); /* no inset border */
+    }
+
+    p {
+      font-size: 1rem;              /* smaller text */
+      margin-bottom: 1.5rem;
+    }
+
+    audio {
+      width: 100%;                  /* ensure full width */
+      margin-top: 0.5rem;
+    }
+
+    .page {
+      padding: 1rem;                /* less padding around the page */
+    }
+  }
+
 </style>
 
 <div class="page" style="--gradient: {gradient}">
