@@ -1,6 +1,7 @@
 <script>
   const { data } = $props();
   const song = data.song;
+  
 
   // Multiple beautiful gradient palettes
   const gradientSets = [
@@ -17,6 +18,7 @@
   // Build the gradient string dynamically
   const gradientString = `linear-gradient(135deg, ${colors.join(", ")})`;
 </script>
+<AudioPlayer src={song.audio_url} />
 
 <style>
   :global(body) {
@@ -94,6 +96,6 @@
 <div class="page" style="--gradient: {gradientString}">
   <div class="glass">
     <p>Press play below!</p>
-    <audio controls src={song.audio_url}></audio>
+    <AudioPlayer src={song.audio_url} />
   </div>
 </div>
