@@ -1,18 +1,20 @@
 <script>
   import { onMount } from "svelte";
 
+  // Runes-mode props
   const { src } = $props();
 
   let audio;
-  let progress = 0;
-  let duration = 0;
+  let bar;
+  let fill;
   let playing = false;
 
   onMount(() => {
+    // DOM-only loop, safe in runes mode
     const loop = () => {
-      if (audio) {
-        progress = audio.currentTime;
-        duration = audio.duration || 0;
+      if (audio && fill && audio.duration > 0) {
+        const pct = audio.currentTime / audio.duration;
+        fill.style.transform = `scaleX(${pct})`;
       }
       requestAnimationFrame(loop);
     };
@@ -26,17 +28,17 @@
   }
 
   function seek(e) {
-    const rect = e.target.getBoundingClientRect();
+    const rect = bar.getBoundingClientRect();
     const pct = (e.clientX - rect.left) / rect.width;
-    audio.currentTime = pct * duration;
+    audio.currentTime = pct * audio.duration;
   }
 </script>
 
 <div class="player">
   <audio bind:this={audio} src={src}></audio>
 
-  <div class="bar" on:click={seek}>
-    <div class="fill" style="transform: scaleX({progress / duration});"></div>
+  <div class="bar" bind:this={bar} on:click={seek}>
+    <div class="fill" bind:this={fill}></div>
   </div>
 
   <button class="toggle" on:click={toggle}>
@@ -50,6 +52,7 @@
     flex-direction: column;
     gap: 1.5rem;
     align-items: center;
+    width: 100%;
   }
 
   .bar {
@@ -58,14 +61,13 @@
     background: rgba(255,255,255,0.25);
     border-radius: 5px;
     overflow: hidden;
-    transform-origin: left;
   }
 
   .fill {
     height: 100%;
     background: white;
     transform-origin: left;
-    transition: transform 0.05s linear;
+    transform: scaleX(0);
   }
 
   .toggle {
