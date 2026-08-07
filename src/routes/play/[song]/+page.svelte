@@ -1,74 +1,89 @@
 <script>
-  // If you want to fetch songs from Supabase later, you can do it here.
+  import AudioPlayer from '$lib/AudioPlayer.svelte';
+
+  const { data } = $props();
+  const song = data.song;
+
+  // Multiple beautiful gradient palettes
+  const gradientSets = [
+    ["#ff5f6d", "#ffc371", "#00c6ff", "#0072ff"],
+    ["#f953c6", "#b91d73", "#43e97b", "#38f9d7"],
+    ["#fa709a", "#fee140", "#6a11cb", "#2575fc"],
+    ["#009fff", "#ec2f4b", "#ff9966", "#ff5e62"],
+    ["#f12711", "#f5af19", "#8360c3", "#2ebf91"]
+  ];
+
+  // Pick one palette at random
+  const colors = gradientSets[Math.floor(Math.random() * gradientSets.length)];
+
+  // Build the gradient string dynamically
+  const gradientString = `linear-gradient(135deg, ${colors.join(", ")})`;
 </script>
 
-<div class="page">
-  <div class="glass">
-    <h1>Present Rens</h1>
-    <p class="subtitle">Scan a card. Guess the song. Have fun.</p>
-
-    <div class="actions">
-      <a href="/play/random" class="btn">Random Song</a>
-      <a href="/songs" class="btn secondary">Song List</a>
-    </div>
-  </div>
-</div>
-
 <style>
+  :global(body) {
+    margin: 0;
+    padding: 0;
+    background: black;
+  }
+
   .page {
     min-height: 100vh;
-    background: linear-gradient(135deg, #1e1e2f, #3a3a5a);
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
     padding: 2rem;
+
+    background: var(--gradient);
+    background-size: 400% 400%;
+    animation: gradientShift 2000s ease-in-out infinite;
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 45% 50%; }
+    50% { background-position: 55% 50%; }
+    100% { background-position: 45% 50%; }
   }
 
   .glass {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(20px);
-    border-radius: 20px;
-    padding: 3rem;
-    text-align: center;
-    max-width: 500px;
+    backdrop-filter: blur(25px);
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 24px;
+    padding: 2.5rem;
+    max-width: 480px;
     width: 100%;
-    box-shadow: 0 0 40px rgba(0,0,0,0.3);
+    text-align: center;
+    border: none;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.25);
   }
 
-  h1 {
-    font-size: 2.8rem;
-    margin-bottom: 0.5rem;
+  p {
     color: white;
-  }
-
-  .subtitle {
-    color: #ddd;
-    margin-bottom: 2rem;
     font-size: 1.2rem;
+    margin-bottom: 2rem;
   }
 
-  .actions {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
+  @media (max-width: 600px) {
+    .glass {
+      padding: 1.5rem;
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+    }
 
-  .btn {
-    background: #ffffff15;
-    padding: 1rem 1.5rem;
-    border-radius: 12px;
-    color: white;
-    font-size: 1.1rem;
-    text-decoration: none;
-    transition: 0.2s;
-    border: 1px solid #ffffff30;
-  }
+    p {
+      font-size: 1rem;
+      margin-bottom: 1.2rem;
+    }
 
-  .btn:hover {
-    background: #ffffff25;
-  }
-
-  .btn.secondary {
-    background: #ffffff08;
+    .page {
+      padding: 1rem;
+    }
   }
 </style>
+
+<div class="page" style="--gradient: {gradientString}">
+  <div class="glass">
+    <AudioPlayer src={song.audio_url} />
+  </div>
+</div>
