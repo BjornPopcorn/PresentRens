@@ -1,17 +1,30 @@
 <script>
   const { data } = $props();
   const song = data.song;
+
+  // Multiple beautiful gradient palettes
+  const gradientSets = [
+    ["#ff5f6d", "#ffc371", "#00c6ff", "#0072ff"],
+    ["#f953c6", "#b91d73", "#43e97b", "#38f9d7"],
+    ["#fa709a", "#fee140", "#6a11cb", "#2575fc"],
+    ["#009fff", "#ec2f4b", "#ff9966", "#ff5e62"],
+    ["#f12711", "#f5af19", "#8360c3", "#2ebf91"]
+  ];
+
+  // Pick one palette at random
+  const colors = gradientSets[Math.floor(Math.random() * gradientSets.length)];
+
+  // Build the gradient string dynamically
+  const gradientString = `linear-gradient(135deg, ${colors.join(", ")})`;
 </script>
 
 <style>
-  /* Remove browser white border */
   :global(body) {
     margin: 0;
     padding: 0;
     background: black;
   }
 
-  /* Animated gradient background */
   .page {
     min-height: 100vh;
     display: flex;
@@ -19,10 +32,9 @@
     justify-content: center;
     padding: 2rem;
 
-    background: linear-gradient(135deg, #ff5f6d, #ffc371, #00c6ff, #0072ff);
+    background: var(--gradient);
     background-size: 400% 400%;
-    animation: gradientShift 600s ease infinite;
-
+    animation: gradientShift 60s ease infinite;
   }
 
   @keyframes gradientShift {
@@ -31,7 +43,6 @@
     100% { background-position: 0% 50%; }
   }
 
-  /* Glass card */
   .glass {
     backdrop-filter: blur(25px);
     background: rgba(255, 255, 255, 0.10);
@@ -40,7 +51,6 @@
     max-width: 480px;
     width: 100%;
     text-align: center;
-
     border: none;
     box-shadow: 0 20px 40px rgba(0,0,0,0.25);
   }
@@ -56,7 +66,6 @@
     margin-top: 1rem;
   }
 
-  /* Mobile-first improvements */
   @media (max-width: 600px) {
     .glass {
       padding: 1.5rem;
@@ -81,7 +90,7 @@
   }
 </style>
 
-<div class="page">
+<div class="page" style="--gradient: {gradientString}">
   <div class="glass">
     <p>Press play below</p>
     <audio controls src={song.audio_url}></audio>
