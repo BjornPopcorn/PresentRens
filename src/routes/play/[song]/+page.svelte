@@ -93,7 +93,7 @@
 
 <div class="page" style="--gradient: {gradientString}">
   <div class="glass">
-    <p>Press play below</p>
+    <p>Press play below!</p>
     <audio controls src={song.audio_url}></audio>
   </div>
 </div>
