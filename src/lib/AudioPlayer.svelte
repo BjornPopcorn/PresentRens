@@ -1,6 +1,7 @@
 <script>
   import { onMount } from "svelte";
-  export let src;
+
+  const { src } = $props();   // ✔ runes‑mode compatible
 
   let audio;
   let progress = 0;
