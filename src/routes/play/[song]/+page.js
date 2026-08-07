@@ -1,19 +1,17 @@
-import { supabase } from '$lib/supabaseClient.js';
-import { error } from '@sveltejs/kit';
+import { supabase } from '$lib/supabaseClient';
 
 export async function load({ params }) {
-  const { song } = params;
-
-  console.log("PARAM SONG:", song);
-
-  const { data, err } = await supabase
+  const { data, error } = await supabase
     .from('songs')
     .select('*')
-    .eq('id', song)
+    .eq('id', params.id)
     .single();
 
-  if (err || !data) {
-    throw error(404, 'Song not found :(');
+  if (error || !data) {
+    return {
+      status: 404,
+      error: new Error('Song not found')
+    };
   }
 
   return { song: data };
