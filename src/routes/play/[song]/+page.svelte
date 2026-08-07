@@ -84,6 +84,7 @@
 
 <div class="page" style="--gradient: {gradientString}">
   <div class="glass">
+    <p></p>
     <AudioPlayer src={song.audio_url} />
   </div>
 </div>
