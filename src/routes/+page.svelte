@@ -1,9 +1,7 @@
 <div class="page">
   <div class="glass">
     <h1>Bello!</h1>
-    <p class="subtitle">Scan a card. Guess the song. Have fun :D</p>
-
-    </div>
+    <p class="subtitle">Scan the QR to start the game.</p>
   </div>
 </div>
 
@@ -36,32 +34,7 @@
 
   .subtitle {
     color: #ddd;
-    margin-bottom: 2rem;
+    margin-top: 1rem;
     font-size: 1.2rem;
-  }
-
-  .actions {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .btn {
-    background: #ffffff15;
-    padding: 1rem 1.5rem;
-    border-radius: 12px;
-    color: white;
-    font-size: 1.1rem;
-    text-decoration: none;
-    transition: 0.2s;
-    border: 1px solid #ffffff30;
-  }
-
-  .btn:hover {
-    background: #ffffff25;
-  }
-
-  .btn.secondary {
-    background: #ffffff08;
   }
 </style>
