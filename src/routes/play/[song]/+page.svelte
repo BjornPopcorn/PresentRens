@@ -33,8 +33,8 @@
     padding: 2rem;
 
     background: var(--gradient);
-    background-size: 150% 150%;
-    animation: gradientShift 600s ease infinite;
+    background-size: 400% 400%;
+    animation: gradientShift 2000s ease infinite;
   }
 
   @keyframes gradientShift {
