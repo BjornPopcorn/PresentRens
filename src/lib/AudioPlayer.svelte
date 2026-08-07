@@ -1,7 +1,5 @@
 <script>
   import { onMount } from "svelte";
-
-  // Runes-mode props
   const { src } = $props();
 
   let audio;
@@ -10,7 +8,6 @@
   let playing = false;
 
   onMount(() => {
-    // DOM-only loop, safe in runes mode
     const loop = () => {
       if (audio && fill && audio.duration > 0) {
         const pct = audio.currentTime / audio.duration;
@@ -41,8 +38,17 @@
     <div class="fill" bind:this={fill}></div>
   </div>
 
-  <button class="toggle" on:click={toggle}>
-    {playing ? "Pause" : "Play"}
+  <button class="round" on:click={toggle}>
+    {#if playing}
+      <!-- Pause icon -->
+      <div class="pause-icon">
+        <div></div>
+        <div></div>
+      </div>
+    {:else}
+      <!-- Play icon -->
+      <div class="play-icon"></div>
+    {/if}
   </button>
 </div>
 
@@ -50,7 +56,7 @@
   .player {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 2rem;
     align-items: center;
     width: 100%;
   }
@@ -70,11 +76,44 @@
     transform: scaleX(0);
   }
 
-  .toggle {
-    padding: 0.6rem 1.2rem;
-    border-radius: 10px;
+  /* Round play/pause button */
+  .round {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
     background: white;
     border: none;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+
+  .round:hover {
+    transform: scale(1.05);
+  }
+
+  /* Play triangle */
+  .play-icon {
+    width: 0;
+    height: 0;
+    border-left: 22px solid black;
+    border-top: 14px solid transparent;
+    border-bottom: 14px solid transparent;
+    margin-left: 4px;
+  }
+
+  /* Pause bars */
+  .pause-icon {
+    display: flex;
+    gap: 8px;
+  }
+
+  .pause-icon div {
+    width: 10px;
+    height: 28px;
+    background: black;
+    border-radius: 3px;
   }
 </style>
