@@ -21,7 +21,7 @@
 
     background: linear-gradient(135deg, #ff5f6d, #ffc371, #00c6ff, #0072ff);
     background-size: 400% 400%;
-    animation: gradientShift 20s ease infinite;
+    animation: gradientShift 60s ease infinite;
   }
 
   @keyframes gradientShift {
