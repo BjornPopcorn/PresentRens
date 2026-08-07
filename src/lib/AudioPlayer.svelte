@@ -1,27 +1,33 @@
 <script>
   import { onMount } from "svelte";
 
-  const { src } = $props();   // ✔ runes‑mode compatible
+  const { src } = $props();
 
   let audio;
   let progress = 0;
   let duration = 0;
+  let playing = false;
 
   onMount(() => {
-    const update = () => {
+    const loop = () => {
       if (audio) {
         progress = audio.currentTime;
         duration = audio.duration || 0;
       }
-      requestAnimationFrame(update);
+      requestAnimationFrame(loop);
     };
-    update();
+    loop();
   });
+
+  function toggle() {
+    if (!audio) return;
+    playing ? audio.pause() : audio.play();
+    playing = !playing;
+  }
 
   function seek(e) {
     const rect = e.target.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const pct = x / rect.width;
+    const pct = (e.clientX - rect.left) / rect.width;
     audio.currentTime = pct * duration;
   }
 </script>
@@ -30,24 +36,43 @@
   <audio bind:this={audio} src={src}></audio>
 
   <div class="bar" on:click={seek}>
-    <div class="fill" style="width: {(progress / duration) * 100}%"></div>
+    <div class="fill" style="transform: scaleX({progress / duration});"></div>
   </div>
 
-  <button on:click={() => audio.play()}>Play</button>
-  <button on:click={() => audio.pause()}>Pause</button>
+  <button class="toggle" on:click={toggle}>
+    {playing ? "Pause" : "Play"}
+  </button>
 </div>
 
 <style>
-  .bar {
-    height: 8px;
-    background: #444;
-    border-radius: 4px;
-    cursor: pointer;
-    margin: 1rem 0;
+  .player {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
   }
+
+  .bar {
+    width: 100%;
+    height: 10px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 5px;
+    overflow: hidden;
+    transform-origin: left;
+  }
+
   .fill {
     height: 100%;
-    background: #fff;
-    border-radius: 4px;
+    background: white;
+    transform-origin: left;
+    transition: transform 0.05s linear;
+  }
+
+  .toggle {
+    padding: 0.6rem 1.2rem;
+    border-radius: 10px;
+    background: white;
+    border: none;
+    cursor: pointer;
   }
 </style>
