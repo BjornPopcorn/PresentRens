@@ -1,4 +1,5 @@
 <script>
+  import AudioPlayer from '$lib/AudioPlayer.svelte';
   const { data } = $props();
   const song = data.song;
   
