@@ -1,11 +1,8 @@
 <div class="page">
   <div class="glass">
-    <h1>Present Rens</h1>
-    <p class="subtitle">Scan a card. Guess the song. Have fun.</p>
+    <h1>Bello!</h1>
+    <p class="subtitle">Scan a card. Guess the song. Have fun :D</p>
 
-    <div class="actions">
-      <a href="/play/random" class="btn">Random Song</a>
-      <a href="/songs" class="btn secondary">Song List</a>
     </div>
   </div>
 </div>
