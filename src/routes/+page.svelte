@@ -24,15 +24,7 @@
     max-width: 500px;
     width: 100%;
     box-shadow: 0 0 40px rgba(0,0,0,0.3);
-
-    /* ⭐ Remove any borders or outlines */
     border: none;
-    outline: none;
-  }
-
-  /* ⭐ Remove focus outlines globally */
-  :global(*) {
-    outline: none;
   }
 
   h1 {
