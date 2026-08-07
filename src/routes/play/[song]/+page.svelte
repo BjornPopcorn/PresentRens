@@ -33,14 +33,15 @@
     padding: 2rem;
 
     background: var(--gradient);
-    background-size: 400% 400%;
-    animation: gradientShift 2000s ease infinite;
+    background-size: 400% 400%; /* keep zoomed-in look */
+    animation: gradientShift 2000s ease-in-out infinite; /* ultra slow */
   }
 
+  /* Tiny movement range for premium slow animation */
   @keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    0% { background-position: 45% 50%; }
+    50% { background-position: 55% 50%; }
+    100% { background-position: 45% 50%; }
   }
 
   .glass {
