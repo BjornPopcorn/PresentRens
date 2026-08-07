@@ -1,12 +1,12 @@
-<div class="page">
-  <div class="glass">
+<div class="home">
+  <div class="home-glass">
     <h1>Bello!</h1>
     <p class="subtitle">Scan the QR to start the game.</p>
   </div>
 </div>
 
 <style>
-  .page {
+  .home {
     min-height: 100vh;
     background: linear-gradient(135deg, #1e1e2f, #3a3a5a);
     display: flex;
@@ -15,7 +15,7 @@
     padding: 2rem;
   }
 
-  .glass {
+  .home-glass {
     background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(20px);
     border-radius: 20px;
@@ -24,7 +24,10 @@
     max-width: 500px;
     width: 100%;
     box-shadow: 0 0 40px rgba(0,0,0,0.3);
+
+    /* absolutely no border or outline */
     border: none;
+    outline: none;
   }
 
   h1 {
