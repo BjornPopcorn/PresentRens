@@ -1,8 +1,8 @@
 <script>
   import AudioPlayer from '$lib/AudioPlayer.svelte';
+
   const { data } = $props();
   const song = data.song;
-  
 
   // Multiple beautiful gradient palettes
   const gradientSets = [
@@ -19,7 +19,6 @@
   // Build the gradient string dynamically
   const gradientString = `linear-gradient(135deg, ${colors.join(", ")})`;
 </script>
-<AudioPlayer src={song.audio_url} />
 
 <style>
   :global(body) {
@@ -36,11 +35,10 @@
     padding: 2rem;
 
     background: var(--gradient);
-    background-size: 400% 400%; /* keep zoomed-in look */
-    animation: gradientShift 2000s ease-in-out infinite; /* ultra slow */
+    background-size: 400% 400%;
+    animation: gradientShift 2000s ease-in-out infinite;
   }
 
-  /* Tiny movement range for premium slow animation */
   @keyframes gradientShift {
     0% { background-position: 45% 50%; }
     50% { background-position: 55% 50%; }
@@ -65,11 +63,6 @@
     margin-bottom: 2rem;
   }
 
-  audio {
-    width: 100%;
-    margin-top: 1rem;
-  }
-
   @media (max-width: 600px) {
     .glass {
       padding: 1.5rem;
@@ -81,11 +74,6 @@
     p {
       font-size: 1rem;
       margin-bottom: 1.2rem;
-    }
-
-    audio {
-      width: 100%;
-      margin-top: 0.5rem;
     }
 
     .page {
