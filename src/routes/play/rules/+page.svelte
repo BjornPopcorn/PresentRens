@@ -137,10 +137,10 @@
 
     <div class="section">
       <div class="section-title">Steal Tokens</div>
-      <p>Each player starts with 2 steal tokens. You can use them in three ways:</p>
+      <p>Each player starts with 2 steal tokens. You can have a maximum of 5. You can use them in three ways:</p>
       <ul>
-        <li><strong>Correct a mistake:</strong> If another player places a card incorrectly, you may place a token and show the correct position. You steal the card.</li>
-        <li><strong>Trade for a free card:</strong> Exchange 4 tokens for a guaranteed correct card. Add it directly to your timeline.</li>
+        <li><strong>Correct a mistake:</strong> If another player places a card incorrectly, you may stop them and place a token in what you think is the correct position. If correct, you steal the card.</li>
+        <li><strong>Trade for a free card:</strong> Exchange 4 tokens for a guaranteed correct card. Add it directly to your timeline. You don't need to guess the year.</li>
         <li><strong>Refresh your card:</strong> On your turn, spend 1 token to discard your current card and draw a new one.</li>
       </ul>
     </div>
