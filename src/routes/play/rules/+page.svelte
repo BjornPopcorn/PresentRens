@@ -1,7 +1,6 @@
 <svelte:options runes={true} />
 
 <script>
-  // Same gradient system as your player page
   const gradientSets = [
     ["#ff5f6d", "#ffc371", "#00c6ff", "#0072ff"],
     ["#f953c6", "#b91d73", "#43e97b", "#38f9d7"],
@@ -15,7 +14,6 @@
 </script>
 
 <style>
-  /* Modern font */
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 
   :global(body) {
@@ -31,7 +29,6 @@
     align-items: center;
     justify-content: center;
     padding: 2rem;
-
     background: var(--gradient);
     background-size: 400% 400%;
     animation: gradientShift 2000s ease-in-out infinite;
@@ -118,7 +115,8 @@
     <div class="section">
       <div class="section-title">Objective</div>
       <p>
-        Place each song card in the correct position on the timeline based on its release date.
+        Build your timeline by placing each song card in the correct chronological position. 
+        Every player starts with one card face-up in front of them — this is the beginning of their timeline.
       </p>
     </div>
 
@@ -128,10 +126,10 @@
       <div class="section-title">How to Play</div>
       <ul>
         <li>Scan the QR code on a card to play the song.</li>
-        <li>Guess where it fits on the timeline.</li>
-        <li>Place it between the existing cards.</li>
-        <li>Flip the card to check the date.</li>
-        <li>If correct, keep the card. If wrong, discard it.</li>
+        <li>Decide where the card fits relative to the dates already in your timeline.</li>
+        <li>Place the card in that position.</li>
+        <li>Flip the card to reveal the date.</li>
+        <li>If correct, add it to your timeline. If incorrect, discard the card.</li>
       </ul>
     </div>
 
@@ -139,10 +137,12 @@
 
     <div class="section">
       <div class="section-title">Steal Tokens</div>
-      <p>
-        Each player starts with 2 steal tokens. Use a token to steal a card from another player
-        when they place it correctly.
-      </p>
+      <p>Each player starts with 2 steal tokens. You can use them in three ways:</p>
+      <ul>
+        <li><strong>Correct a mistake:</strong> If another player places a card incorrectly, you may place a token and show the correct position. You steal the card.</li>
+        <li><strong>Trade for a free card:</strong> Exchange 4 tokens for a guaranteed correct card. Add it directly to your timeline.</li>
+        <li><strong>Refresh your card:</strong> On your turn, spend 1 token to discard your current card and draw a new one.</li>
+      </ul>
     </div>
 
     <div class="divider"></div>
@@ -150,7 +150,7 @@
     <div class="section">
       <div class="section-title">Winning</div>
       <p>
-        The first player to collect 10 cards wins the game.
+        The first player to collect 10 correct cards wins the game.
       </p>
     </div>
   </div>
