@@ -15,10 +15,14 @@
 </script>
 
 <style>
+  /* Modern font */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
   :global(body) {
     margin: 0;
     padding: 0;
     background: black;
+    font-family: 'Inter', sans-serif;
   }
 
   .page {
@@ -30,7 +34,7 @@
 
     background: var(--gradient);
     background-size: 400% 400%;
-    animation: gradientShift 500s ease-in-out infinite;
+    animation: gradientShift 2000s ease-in-out infinite;
   }
 
   @keyframes gradientShift {
@@ -44,7 +48,7 @@
     background: rgba(255, 255, 255, 0.10);
     border-radius: 24px;
     padding: 2.5rem;
-    max-width: 600px;
+    max-width: 650px;
     width: 100%;
     color: white;
     box-shadow: 0 20px 40px rgba(0,0,0,0.25);
@@ -52,23 +56,37 @@
 
   h1 {
     text-align: center;
-    margin-bottom: 2rem;
-    font-size: 2rem;
+    margin-bottom: 2.5rem;
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
   }
 
-  h2 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
-    font-size: 1.4rem;
+  .section {
+    margin-bottom: 2rem;
+  }
+
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 0.8rem;
+    letter-spacing: -0.3px;
+  }
+
+  .divider {
+    height: 1px;
+    background: rgba(255,255,255,0.15);
+    margin: 1.5rem 0;
   }
 
   p, li {
-    font-size: 1.1rem;
-    line-height: 1.6;
+    font-size: 1.05rem;
+    line-height: 1.65;
+    font-weight: 300;
   }
 
   ul {
-    padding-left: 1.4rem;
+    padding-left: 1.2rem;
   }
 
   @media (max-width: 600px) {
@@ -80,15 +98,15 @@
     }
 
     h1 {
-      font-size: 1.6rem;
+      font-size: 1.7rem;
     }
 
-    h2 {
-      font-size: 1.2rem;
+    .section-title {
+      font-size: 1.15rem;
     }
 
     p, li {
-      font-size: 1rem;
+      font-size: 0.95rem;
     }
   }
 </style>
@@ -97,29 +115,43 @@
   <div class="glass">
     <h1>Game Rules</h1>
 
-    <h2>🎵 Objective</h2>
-    <p>
-      Place each song card in the correct position on the timeline based on its release date.
-    </p>
+    <div class="section">
+      <div class="section-title">Objective</div>
+      <p>
+        Place each song card in the correct position on the timeline based on its release date.
+      </p>
+    </div>
 
-    <h2>🃏 How to Play</h2>
-    <ul>
-      <li>Scan the QR code on a card to play the song.</li>
-      <li>Guess where it fits on the timeline.</li>
-      <li>Place it between the existing cards.</li>
-      <li>Flip the card to check the date.</li>
-      <li>If correct, keep the card. If wrong, discard it.</li>
-    </ul>
+    <div class="divider"></div>
 
-    <h2>⭐ Steal Tokens</h2>
-    <p>
-      Each player starts with 2 steal tokens. Use a token to steal a card from another player
-      when they place it correctly.
-    </p>
+    <div class="section">
+      <div class="section-title">How to Play</div>
+      <ul>
+        <li>Scan the QR code on a card to play the song.</li>
+        <li>Guess where it fits on the timeline.</li>
+        <li>Place it between the existing cards.</li>
+        <li>Flip the card to check the date.</li>
+        <li>If correct, keep the card. If wrong, discard it.</li>
+      </ul>
+    </div>
 
-    <h2>🏆 Winning</h2>
-    <p>
-      The first player to collect 10 cards wins the game.
-    </p>
+    <div class="divider"></div>
+
+    <div class="section">
+      <div class="section-title">Steal Tokens</div>
+      <p>
+        Each player starts with 2 steal tokens. Use a token to steal a card from another player
+        when they place it correctly.
+      </p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+      <div class="section-title">Winning</div>
+      <p>
+        The first player to collect 10 cards wins the game.
+      </p>
+    </div>
   </div>
 </div>
