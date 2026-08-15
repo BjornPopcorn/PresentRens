@@ -137,7 +137,7 @@
 
     <div class="section">
       <div class="section-title">Steal Tokens</div>
-      <p>Each player starts with 2 steal tokens. You can have a maximum of 5. You can use them in three ways:</p>
+      <p>Each player starts with 2 steal tokens. They can be earned by guessing both the name and artist correctly. If there are multiple artists, guessing only one is sufficient. You can have a maximum of 5. You can use them in three ways:</p>
       <ul>
         <li><strong>Correct a mistake:</strong> If another player places a card incorrectly, you may stop them and place a token in what you think is the correct position. If correct, you steal the card.</li>
         <li><strong>Trade for a free card:</strong> Exchange 4 tokens for a guaranteed correct card. Add it directly to your timeline. You don't need to guess the year.</li>
