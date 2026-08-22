@@ -13,7 +13,7 @@ export async function load({ params }) {
     .single();
 
   if (err || !data) {
-    throw error(404, 'Song not found :(');
+    throw error(404, 'Something went wrong, the website may be inactive. Contact Bjorn to reactivate it');
   }
 
   return { song: data };
