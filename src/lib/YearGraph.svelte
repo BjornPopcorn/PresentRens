@@ -62,14 +62,17 @@
         },
         scales: {
           x: {
-            ticks: {
-              color: "white",
-              autoSkip: false      // show all years
-              callback: (value, index) => {
-                   return index % 2 === 0 ? fullYears[index] : "";   
-            },
-            grid: { color: "rgba(255,255,255,0.1)" }
-          },
+              ticks: {
+                color: "white",
+                autoSkip: false,
+                callback: (value, index) => {
+                  // show every 2nd year
+                  return index % 2 === 0 ? fullYears[index] : "";
+                }
+              },
+              grid: { color: "rgba(255,255,255,0.1)" }
+            }
+          ,
           y: {
             beginAtZero: true,
             ticks: {
