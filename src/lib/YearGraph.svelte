@@ -109,7 +109,7 @@
   .blur-overlay {
     position: absolute;
     inset: 0;
-    backdrop-filter: blur(30px);
+    backdrop-filter: blur(500px);
     -webkit-backdrop-filter: blur(30px);
     background: rgba(0,0,0,0.05);   /* ← VERY light tint */
     display: flex;
