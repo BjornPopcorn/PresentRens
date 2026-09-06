@@ -112,7 +112,6 @@
     overflow: hidden;
   }
 
-  /* REAL blur applied to the canvas container */
   .canvas-container {
     position: relative;
     z-index: 1;
@@ -124,7 +123,6 @@
     filter: blur(0px);
   }
 
-  /* Overlay with button */
   .blur-overlay {
     position: absolute;
     inset: 0;
@@ -152,7 +150,7 @@
 
   canvas {
     width: 100%;
-    height: 300px; /* REQUIRED for Chart.js to render */
+    height: 300px; /* REQUIRED */
     max-width: 600px;
     margin: 2rem auto;
   }
