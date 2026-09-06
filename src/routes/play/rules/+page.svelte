@@ -1,7 +1,9 @@
 <script>
   import YearGraph from "$lib/YearGraph.svelte";
 
-  const { years } = $props();
+  export let data;
+  const { years } = data;
+
 
   console.log("Years from props:", years);  // <-- THIS IS THE CORRECT PLACE
 
