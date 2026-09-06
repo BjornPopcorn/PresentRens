@@ -1,3 +1,5 @@
+import { supabase } from '$lib/supabaseClient.js';
+
 export async function load() {
   const { data, error } = await supabase
     .from("songs")
@@ -18,8 +20,7 @@ export async function load() {
     .map(([year, count]) => ({ year: Number(year), count }))
     .sort((a, b) => a.year - b.year);
 
-    console.log("Supabase result:", data, "error:", error);
+  console.log("Supabase result:", data, "error:", error);
 
   return { years };
-  
 }
