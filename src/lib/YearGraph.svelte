@@ -38,7 +38,7 @@
     const counts = years.map(y => countMap.get(y) || 0);
 
     // Smooth but still aligned 1:1 with years
-    const smoothed = smooth(counts, 8).map(v => Math.max(0, v)); // clamp at 0
+    const smoothed = smooth(counts, 2).map(v => Math.max(0, v)); // clamp at 0
 
     new Chart(canvas, {
       type: "line",
