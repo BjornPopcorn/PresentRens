@@ -5,110 +5,90 @@
   const { data } = $props();
   let canvas;
 
-  // Cubic Hermite spline interpolation (C² smooth)
-  function hermiteSpline(xs, ys, samplesPerSegment = 100) {
+  // C² Hermite spline
+  function hermiteSpline(xs, ys, outputCount) {
     const n = xs.length;
     const ms = new Array(n);
 
-    // Compute tangents
+    // Tangents
     for (let i = 0; i < n; i++) {
-      if (i === 0) {
-        ms[i] = ys[1] - ys[0];
-      } else if (i === n - 1) {
-        ms[i] = ys[n - 1] - ys[n - 2];
-      } else {
-        ms[i] = (ys[i + 1] - ys[i - 1]) / 2;
-      }
+      if (i === 0) ms[i] = ys[1] - ys[0];
+      else if (i === n - 1) ms[i] = ys[n - 1] - ys[n - 2];
+      else ms[i] = (ys[i + 1] - ys[i - 1]) / 2;
     }
 
-    const resultY = [];
+    const result = [];
 
-    for (let i = 0; i < n - 1; i++) {
+    for (let k = 0; k < outputCount; k++) {
+      const t = k / (outputCount - 1); // 0 → 1
+      const pos = t * (n - 1);
+      const i = Math.floor(pos);
+      const u = pos - i;
+
       const y0 = ys[i];
-      const y1 = ys[i + 1];
+      const y1 = ys[i + 1] ?? ys[i];
       const m0 = ms[i];
-      const m1 = ms[i + 1];
+      const m1 = ms[i + 1] ?? ms[i];
 
-      for (let t = 0; t < samplesPerSegment; t++) {
-        const u = t / samplesPerSegment;
+      const h00 = 2*u*u*u - 3*u*u + 1;
+      const h10 = u*u*u - 2*u*u + u;
+      const h01 = -2*u*u*u + 3*u*u;
+      const h11 = u*u*u - u*u;
 
-        const h00 = 2*u*u*u - 3*u*u + 1;
-        const h10 = u*u*u - 2*u*u + u;
-        const h01 = -2*u*u*u + 3*u*u;
-        const h11 = u*u*u - u*u;
-
-        resultY.push(
-          h00 * y0 +
-          h10 * m0 +
-          h01 * y1 +
-          h11 * m1
-        );
-      }
+      const y = h00*y0 + h10*m0 + h01*y1 + h11*m1;
+      result.push(Math.max(0, y)); // clamp at 0
     }
 
-    return resultY;
+    return result;
   }
 
   onMount(() => {
     if (!data || !Array.isArray(data)) return;
 
-    // Build full year range
+    // Full year range
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
 
     const fullYears = [];
-    for (let y = minYear; y <= maxYear; y++) {
-      fullYears.push(y);
-    }
+    for (let y = minYear; y <= maxYear; y++) fullYears.push(y);
 
     // Fill missing years with 0
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = fullYears.map(y => countMap.get(y) || 0);
 
     // Reduce to anchor points using medians
-    const anchorCount = 14;
+    const anchorCount = 16;
     const segmentSize = Math.ceil(fullYears.length / anchorCount);
 
     const anchorValues = [];
-
     for (let i = 0; i < anchorCount; i++) {
       const start = i * segmentSize;
       const end = Math.min(fullYears.length, start + segmentSize);
-
       const slice = counts.slice(start, end);
+
       const sorted = [...slice].sort((a, b) => a - b);
       const median = sorted[Math.floor(sorted.length / 2)];
 
       anchorValues.push(median);
     }
 
-    // Compute spline Y-values only
+    // Generate EXACTLY one spline value per year
     const splineY = hermiteSpline(
-      [...Array(anchorCount).keys()], // fake X values: 0,1,2,3...
+      [...Array(anchorCount).keys()],
       anchorValues,
-      40
+      fullYears.length
     );
-
-    // Clamp negative values
-    const clampedY = splineY.map(v => Math.max(0, v));
-
-    // Stretch spline Y-values to match number of real years
-    const stretchedY = [];
-    for (let i = 0; i < fullYears.length; i++) {
-      const idx = Math.floor(i / fullYears.length * clampedY.length);
-      stretchedY.push(clampedY[idx]);
-    }
 
     new Chart(canvas, {
       type: "line",
       data: {
-        labels: fullYears,   // REAL YEARS ONLY
+        labels: fullYears,
         datasets: [{
           label: "Song Trend",
-          data: stretchedY,  // SMOOTH SPLINE VALUES
+          data: splineY,
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.10)",
-          tension: 0,        // spline already smooth
+          tension: 0, // spline is already smooth
           borderWidth: 3,
           pointRadius: 0,
           fill: true
@@ -123,14 +103,11 @@
           x: {
             ticks: {
               color: "white",
-              callback: (v) => fullYears[v],
               autoSkip: false,
-              maxRotation: 0,
-              minRotation: 0
+              callback: (_, i) => fullYears[i]
             },
             grid: { color: "rgba(255,255,255,0.1)" }
-          }
-          ,
+          },
           y: {
             beginAtZero: true,
             ticks: {
@@ -145,7 +122,7 @@
   });
 </script>
 
-<canvas bind:this={canvas} width="600" height="300"></canvas>
+<canvas bind:this={canvas}></canvas>
 
 <style>
   canvas {
