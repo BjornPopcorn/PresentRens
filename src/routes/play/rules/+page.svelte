@@ -1,11 +1,10 @@
 <script>
+  import { page } from '$app/state';
   import YearGraph from "$lib/YearGraph.svelte";
 
-  export let data;
-  const { years } = data;
+  const years = $page.data.years;
 
-
-  console.log("Years from props:", years);  // <-- THIS IS THE CORRECT PLACE
+  console.log("Years from page.data:", years);
 
   const gradientSets = [
     ["#ff5f6d", "#ffc371", "#00c6ff", "#0072ff"],
@@ -18,6 +17,7 @@
   const colors = gradientSets[Math.floor(Math.random() * gradientSets.length)];
   const gradientString = `linear-gradient(135deg, ${colors.join(", ")})`;
 </script>
+
 
 
 <style>
