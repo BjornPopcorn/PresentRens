@@ -1,6 +1,5 @@
 <script>
   import AudioPlayer from '$lib/AudioPlayer.svelte';
-  import { browser } from '$app/environment';
 
   const { data } = $props();
   const song = data.song;
@@ -85,8 +84,6 @@
 
 <div class="page" style="--gradient: {gradientString}">
   <div class="glass">
-    {#if browser}
-      <AudioPlayer src={song.audio_url} />
-    {/if}
+    <AudioPlayer src={song.audio_url} />
   </div>
 </div>
