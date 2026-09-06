@@ -6,7 +6,7 @@
   let canvas;
 
   // Simple Gaussian-like smoothing over the raw counts
-  function smooth(values, radius = 3) {
+  function smooth(values, radius = 6) {
     const result = [];
     for (let i = 0; i < values.length; i++) {
       let sum = 0;
