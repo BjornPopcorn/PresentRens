@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import Chart from "chart.js/auto";
 
-  const { data } = $props();   // ← runes mode required
+  const { data } = $props();   // runes mode required
   let canvas;
 
   function smooth(values, radius = 4) {
@@ -79,23 +79,30 @@
   });
 
   function reveal() {
+    const container = document.getElementById("canvas-container");
+    container.classList.add("focused");
+
     const overlay = document.getElementById("graph-blur-overlay");
     overlay.classList.add("fade-out");
 
     setTimeout(() => {
       overlay.style.display = "none";
-    }, 400);
+    }, 600);
   }
 </script>
 
 <div class="graph-wrapper">
+  <!-- Overlay with button -->
   <div id="graph-blur-overlay" class="blur-overlay">
     <button class="reveal-btn" on:click={reveal}>
       Reveal Song Distribution Graph
     </button>
   </div>
 
-  <canvas bind:this={canvas}></canvas>
+  <!-- Canvas container that gets blurred -->
+  <div id="canvas-container" class="canvas-container">
+    <canvas bind:this={canvas}></canvas>
+  </div>
 </div>
 
 <style>
@@ -104,29 +111,34 @@
     width: 100%;
     max-width: 600px;
     margin: 2rem auto;
+    overflow: hidden;
   }
 
+  /* REAL blur applied to the canvas container */
+  .canvas-container {
+    filter: blur(35px);
+    transition: filter 0.6s ease;
+  }
+
+  .canvas-container.focused {
+    filter: blur(0px);
+  }
+
+  /* Overlay with button */
   .blur-overlay {
     position: absolute;
     inset: 0;
-    backdrop-filter: blur(500px);
-    -webkit-backdrop-filter: blur(30px);
-    background: rgba(0,0,0,0.05);   /* ← VERY light tint */
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
-    transition: opacity 0.6s ease, backdrop-filter 0.6s ease;
     z-index: 10;
+    background: rgba(0,0,0,0.15);
+    transition: opacity 0.6s ease;
   }
-
 
   .fade-out {
     opacity: 0;
-    backdrop-filter: blur(0px);      /* blur animates away */
-    -webkit-backdrop-filter: blur(0px);
   }
-
 
   .reveal-btn {
     padding: 0.8rem 1.2rem;
