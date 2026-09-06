@@ -66,12 +66,12 @@
                 color: "white",
                 autoSkip: false,
                 callback: (value, index) => {
-                  // show every 2nd year
-                  return index % 2 === 0 ? fullYears[index] : "";
+                  return index % 2 === 0 ? years[index] : "";
                 }
               },
               grid: { color: "rgba(255,255,255,0.1)" }
             }
+
           ,
           y: {
             beginAtZero: true,
