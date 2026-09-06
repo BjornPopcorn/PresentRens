@@ -167,6 +167,7 @@
   <!-- DEBUG: SHOW THE YEARS ARRAY -->
   <pre style="color:white; font-size:0.9rem; margin-top:1rem;">
     {JSON.stringify(years, null, 2)}
+  console.log("Years from props:", years);
   </pre>
 </div>
 
