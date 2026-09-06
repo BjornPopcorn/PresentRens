@@ -21,28 +21,35 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = fullYears.map(y => countMap.get(y) || 0);
 
-    // Ultra-smooth moving average (5-year window)
-    const smoothCounts = counts.map((_, i) => {
-      const window = [
-        counts[i - 2] ?? counts[i],
-        counts[i - 1] ?? counts[i],
-        counts[i],
-        counts[i + 1] ?? counts[i],
-        counts[i + 2] ?? counts[i]
-      ];
-      return Math.round(window.reduce((a, b) => a + b, 0) / window.length);
-    });
+    // --- ULTRA SMOOTHING ---
+    // Downsample into 12 buckets (like months)
+    const bucketCount = 12;
+    const bucketSize = Math.ceil(fullYears.length / bucketCount);
+
+    const bucketYears = [];
+    const bucketValues = [];
+
+    for (let i = 0; i < bucketCount; i++) {
+      const start = i * bucketSize;
+      const end = start + bucketSize;
+
+      const slice = counts.slice(start, end);
+      const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+
+      bucketYears.push(fullYears[Math.floor((start + end) / 2)]); // mid-year
+      bucketValues.push(Math.round(avg));
+    }
 
     new Chart(canvas, {
       type: "line",
       data: {
-        labels: fullYears,
+        labels: bucketYears,
         datasets: [{
           label: "Song Trend",
-          data: smoothCounts,
+          data: bucketValues,
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.12)",
-          tension: 0.8,        // smoother curve
+          tension: 0.9,        // maximum smoothness
           borderWidth: 3,
           pointRadius: 0,      // no dots
           fill: true           // soft fill
