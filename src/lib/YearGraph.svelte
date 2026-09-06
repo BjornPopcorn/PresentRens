@@ -80,6 +80,7 @@
           }]
         },
         options: {
+          maintainAspectRatio: false,   // ← important
           plugins: {
             legend: { display: false },
             tooltip: { enabled: false }
@@ -191,8 +192,9 @@
   }
 
   canvas {
-    width: 100%;
-    height: 300px; /* REQUIRED */
+    display: block;
+    width: 100% !important;
+    height: auto !important;   /* let Chart.js control internal height */
     max-width: 600px;
     margin: 2rem auto;
     outline: 2px solid yellow; /* DEBUG: show canvas */
