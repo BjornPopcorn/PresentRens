@@ -5,40 +5,21 @@
   const { data } = $props();
   let canvas;
 
-  // C² Hermite spline
-  function hermiteSpline(xs, ys, outputCount) {
-    const n = xs.length;
-    const ms = new Array(n);
-
-    // Tangents
-    for (let i = 0; i < n; i++) {
-      if (i === 0) ms[i] = ys[1] - ys[0];
-      else if (i === n - 1) ms[i] = ys[n - 1] - ys[n - 2];
-      else ms[i] = (ys[i + 1] - ys[i - 1]) / 2;
-    }
-
+  // Simple Gaussian-like smoothing over the raw counts
+  function smooth(values, radius = 2) {
     const result = [];
-
-    for (let k = 0; k < outputCount; k++) {
-      const t = k / (outputCount - 1); // 0 → 1
-      const pos = t * (n - 1);
-      const i = Math.floor(pos);
-      const u = pos - i;
-
-      const y0 = ys[i];
-      const y1 = ys[i + 1] ?? ys[i];
-      const m0 = ms[i];
-      const m1 = ms[i + 1] ?? ms[i];
-
-      const h00 = 2*u*u*u - 3*u*u + 1;
-      const h10 = u*u*u - 2*u*u + u;
-      const h01 = -2*u*u*u + 3*u*u;
-      const h11 = u*u*u - u*u;
-
-      const y = h00*y0 + h10*m0 + h01*y1 + h11*m1;
-      result.push(Math.max(0, y)); // clamp at 0
+    for (let i = 0; i < values.length; i++) {
+      let sum = 0;
+      let count = 0;
+      for (let r = -radius; r <= radius; r++) {
+        const idx = i + r;
+        if (idx >= 0 && idx < values.length) {
+          sum += values[idx];
+          count++;
+        }
+      }
+      result.push(sum / count);
     }
-
     return result;
   }
 
@@ -49,46 +30,26 @@
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
 
-    const fullYears = [];
-    for (let y = minYear; y <= maxYear; y++) fullYears.push(y);
+    const years = [];
+    for (let y = minYear; y <= maxYear; y++) years.push(y);
 
     // Fill missing years with 0
     const countMap = new Map(data.map(d => [d.year, d.count]));
-    const counts = fullYears.map(y => countMap.get(y) || 0);
+    const counts = years.map(y => countMap.get(y) || 0);
 
-    // Reduce to anchor points using medians
-    const anchorCount = 16;
-    const segmentSize = Math.ceil(fullYears.length / anchorCount);
-
-    const anchorValues = [];
-    for (let i = 0; i < anchorCount; i++) {
-      const start = i * segmentSize;
-      const end = Math.min(fullYears.length, start + segmentSize);
-      const slice = counts.slice(start, end);
-
-      const sorted = [...slice].sort((a, b) => a - b);
-      const median = sorted[Math.floor(sorted.length / 2)];
-
-      anchorValues.push(median);
-    }
-
-    // Generate EXACTLY one spline value per year
-    const splineY = hermiteSpline(
-      [...Array(anchorCount).keys()],
-      anchorValues,
-      fullYears.length
-    );
+    // Smooth but still aligned 1:1 with years
+    const smoothed = smooth(counts, 2).map(v => Math.max(0, v)); // clamp at 0
 
     new Chart(canvas, {
       type: "line",
       data: {
-        labels: fullYears,
+        labels: years,          // real years, no tricks
         datasets: [{
           label: "Song Trend",
-          data: splineY,
+          data: smoothed,
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.10)",
-          tension: 0, // spline is already smooth
+          tension: 0.6,         // smooth curve
           borderWidth: 3,
           pointRadius: 0,
           fill: true
@@ -103,8 +64,7 @@
           x: {
             ticks: {
               color: "white",
-              autoSkip: false,
-              callback: (_, i) => fullYears[i]
+              autoSkip: false      // show all years
             },
             grid: { color: "rgba(255,255,255,0.1)" }
           },
@@ -112,7 +72,7 @@
             beginAtZero: true,
             ticks: {
               color: "white",
-              callback: v => Math.round(v)
+              callback: v => Math.round(v) // no decimals
             },
             grid: { color: "rgba(255,255,255,0.1)" }
           }
