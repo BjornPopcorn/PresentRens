@@ -6,7 +6,7 @@
   let canvas;
 
   // Cubic Hermite spline interpolation (C² smooth)
-  function hermiteSpline(xs, ys, samplesPerSegment = 200) {
+  function hermiteSpline(xs, ys, samplesPerSegment = 100) {
     const n = xs.length;
     const ms = new Array(n);
 
@@ -66,7 +66,7 @@
     const counts = fullYears.map(y => countMap.get(y) || 0);
 
     // Reduce to anchor points using medians
-    const anchorCount = 20;
+    const anchorCount = 14;
     const segmentSize = Math.ceil(fullYears.length / anchorCount);
 
     const anchorValues = [];
