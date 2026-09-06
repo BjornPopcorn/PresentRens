@@ -6,7 +6,7 @@
   let canvas;
 
   // Simple Gaussian-like smoothing over the raw counts
-  function smooth(values, radius = 8) {
+  function smooth(values, radius = 4) {
     const result = [];
     for (let i = 0; i < values.length; i++) {
       let sum = 0;
@@ -38,7 +38,7 @@
     const counts = years.map(y => countMap.get(y) || 0);
 
     // Smooth but still aligned 1:1 with years
-    const smoothed = smooth(counts, 2).map(v => Math.max(0, v)); // clamp at 0
+    const smoothed = smooth(counts, 4).map(v => Math.max(0, v)); // clamp at 0
 
     new Chart(canvas, {
       type: "line",
