@@ -74,13 +74,14 @@
 
           ,
           y: {
-            beginAtZero: true,
-            ticks: {
-              color: "white",
-              callback: v => Math.round(v) // no decimals
-            },
-            grid: { color: "rgba(255,255,255,0.1)" }
-          }
+              beginAtZero: true,
+              ticks: {
+                color: "white",
+                precision: 0      // ← forces whole numbers without duplicates
+              },
+              grid: { color: "rgba(255,255,255,0.1)" }
+            }
+
         }
       }
     });
