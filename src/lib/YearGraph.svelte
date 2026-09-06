@@ -5,33 +5,6 @@
   const { data } = $props();
   let canvas;
 
-  // Gaussian blur helper
-  function gaussianSmooth(values, radius = 3) {
-    const kernel = [];
-    const sigma = radius / 2;
-    const twoSigmaSq = 2 * sigma * sigma;
-
-    for (let i = -radius; i <= radius; i++) {
-      kernel.push(Math.exp(-(i * i) / twoSigmaSq));
-    }
-
-    const kernelSum = kernel.reduce((a, b) => a + b, 0);
-    const normalizedKernel = kernel.map(v => v / kernelSum);
-
-    const result = [];
-
-    for (let i = 0; i < values.length; i++) {
-      let sum = 0;
-      for (let k = -radius; k <= radius; k++) {
-        const idx = Math.min(values.length - 1, Math.max(0, i + k));
-        sum += values[idx] * normalizedKernel[k + radius];
-      }
-      result.push(sum);
-    }
-
-    return result;
-  }
-
   onMount(() => {
     if (!data || !Array.isArray(data)) return;
 
@@ -48,30 +21,36 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = fullYears.map(y => countMap.get(y) || 0);
 
-    // Normalize counts (0–1)
-    const maxCount = Math.max(...counts);
-    const normalized = counts.map(c => c / maxCount);
+    // --- REDUCE TO ANCHOR POINTS ---
+    const anchorCount = 8; // smooth but meaningful
+    const segmentSize = Math.ceil(fullYears.length / anchorCount);
 
-    // Apply Gaussian smoothing
-    const blurred = gaussianSmooth(normalized, 4);
+    const anchorYears = [];
+    const anchorValues = [];
 
-    // Blend blurred trend with real data (0.7 trend, 0.3 real)
-    const blended = blurred.map((b, i) => {
-      return Math.round((b * 0.7 + normalized[i] * 0.3) * maxCount);
-    });
+    for (let i = 0; i < anchorCount; i++) {
+      const start = i * segmentSize;
+      const end = Math.min(fullYears.length, start + segmentSize);
+
+      const slice = counts.slice(start, end);
+      const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+
+      anchorYears.push(fullYears[Math.floor((start + end) / 2)]);
+      anchorValues.push(avg);
+    }
 
     new Chart(canvas, {
       type: "line",
       data: {
-        labels: fullYears,
+        labels: anchorYears,
         datasets: [{
           label: "Song Trend",
-          data: blended,
+          data: anchorValues,
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.10)",
-          tension: 0.9,
+          tension: 1.0,        // maximum smoothness
           borderWidth: 3,
-          pointRadius: 0,
+          pointRadius: 0,      // hide anchor points
           fill: true
         }]
       },
