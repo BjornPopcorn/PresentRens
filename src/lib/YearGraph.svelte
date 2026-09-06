@@ -109,9 +109,9 @@
   .blur-overlay {
     position: absolute;
     inset: 0;
-    backdrop-filter: blur(30px);     /* REAL blur */
-    -webkit-backdrop-filter: blur(30px); /* Safari support */
-    background: rgba(0,0,0,0.15);    /* very light tint */
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    background: rgba(0,0,0,0.05);   /* ← VERY light tint */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -119,6 +119,7 @@
     transition: opacity 0.6s ease, backdrop-filter 0.6s ease;
     z-index: 10;
   }
+
 
   .fade-out {
     opacity: 0;
