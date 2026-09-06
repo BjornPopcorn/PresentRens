@@ -6,7 +6,7 @@
   let canvas;
 
   // Cubic Hermite spline interpolation (C² smooth)
-  function hermiteSpline(xs, ys, samplesPerSegment = 80) {
+  function hermiteSpline(xs, ys, samplesPerSegment = 200) {
     const n = xs.length;
     const ms = new Array(n);
 
