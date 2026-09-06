@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import Chart from "chart.js/auto";
 
-  export let data = []; // array of { year, count }
+  const { data } = $props();  // array of { year, count }
 
   let canvas;
 
