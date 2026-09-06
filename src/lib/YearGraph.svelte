@@ -6,7 +6,7 @@
   let canvas;
 
   // Simple LOWESS smoothing
-  function lowess(x, y, f = 0.9) {
+  function lowess(x, y, f = 0.05) {
     const n = x.length;
     const r = Math.floor(n * f);
     const ySmooth = [];
