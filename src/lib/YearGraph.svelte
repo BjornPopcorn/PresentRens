@@ -5,6 +5,8 @@
   const { data } = $props();   // runes mode required
   let canvas;
 
+  console.log("YearGraph.svelte: raw props data =", data);
+
   function smooth(values, radius = 4) {
     const result = [];
     for (let i = 0; i < values.length; i++) {
@@ -23,10 +25,31 @@
   }
 
   onMount(() => {
-    if (!data || !Array.isArray(data)) return;
+    console.log("YearGraph.svelte: onMount triggered");
+    console.log("YearGraph.svelte: canvas element =", canvas);
+    console.log("YearGraph.svelte: data inside onMount =", data);
+
+    if (!data) {
+      console.log("YearGraph.svelte: data is NULL or UNDEFINED");
+      return;
+    }
+
+    if (!Array.isArray(data)) {
+      console.log("YearGraph.svelte: data is NOT an array. Actual type:", typeof data);
+      return;
+    }
+
+    if (data.length === 0) {
+      console.log("YearGraph.svelte: data is an EMPTY ARRAY");
+      return;
+    }
+
+    console.log("YearGraph.svelte: data looks valid, building chart…");
 
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
+
+    console.log("YearGraph.svelte: minYear =", minYear, "maxYear =", maxYear);
 
     const years = [];
     for (let y = minYear; y <= maxYear; y++) years.push(y);
@@ -34,59 +57,75 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = years.map(y => countMap.get(y) || 0);
 
+    console.log("YearGraph.svelte: counts =", counts);
+
     const smoothed = smooth(counts, 4).map(v => Math.max(0, v));
 
-    new Chart(canvas, {
-      type: "line",
-      data: {
-        labels: years,
-        datasets: [{
-          label: "Song Trend",
-          data: smoothed,
-          borderColor: "white",
-          backgroundColor: "rgba(255,255,255,0.10)",
-          tension: 0.6,
-          borderWidth: 3,
-          pointRadius: 0,
-          fill: true
-        }]
-      },
-      options: {
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: false }
+    console.log("YearGraph.svelte: smoothed =", smoothed);
+
+    try {
+      new Chart(canvas, {
+        type: "line",
+        data: {
+          labels: years,
+          datasets: [{
+            label: "Song Trend",
+            data: smoothed,
+            borderColor: "white",
+            backgroundColor: "rgba(255,255,255,0.10)",
+            tension: 0.6,
+            borderWidth: 3,
+            pointRadius: 0,
+            fill: true
+          }]
         },
-        scales: {
-          x: {
-            ticks: {
-              color: "white",
-              autoSkip: false,
-              callback: (value, index) => index % 2 === 0 ? years[index] : ""
-            },
-            grid: { color: "rgba(255,255,255,0.1)" }
+        options: {
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
           },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              color: "white",
-              precision: 0
+          scales: {
+            x: {
+              ticks: {
+                color: "white",
+                autoSkip: false,
+                callback: (value, index) => index % 2 === 0 ? years[index] : ""
+              },
+              grid: { color: "rgba(255,255,255,0.1)" }
             },
-            grid: { color: "rgba(255,255,255,0.1)" }
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: "white",
+                precision: 0
+              },
+              grid: { color: "rgba(255,255,255,0.1)" }
+            }
           }
         }
-      }
-    });
+      });
+
+      console.log("YearGraph.svelte: Chart.js successfully initialized");
+    } catch (err) {
+      console.error("YearGraph.svelte: Chart.js ERROR:", err);
+    }
   });
 
   function reveal() {
-    const container = document.getElementById("canvas-container");
-    container.classList.add("focused");
+    console.log("YearGraph.svelte: reveal() called");
 
+    const container = document.getElementById("canvas-container");
     const overlay = document.getElementById("graph-blur-overlay");
+
+    console.log("YearGraph.svelte: container =", container);
+    console.log("YearGraph.svelte: overlay =", overlay);
+
+    container.classList.add("focused");
     overlay.classList.add("fade-out");
 
     setTimeout(() => {
       overlay.style.display = "none";
+      console.log("YearGraph.svelte: overlay hidden");
     }, 600);
   }
 </script>
@@ -110,6 +149,7 @@
     max-width: 600px;
     margin: 2rem auto;
     overflow: hidden;
+    outline: 2px solid red; /* DEBUG: show wrapper */
   }
 
   .canvas-container {
@@ -117,6 +157,7 @@
     z-index: 1;
     filter: blur(35px);
     transition: filter 0.6s ease;
+    outline: 2px solid blue; /* DEBUG: show canvas container */
   }
 
   .canvas-container.focused {
@@ -132,6 +173,7 @@
     z-index: 2;
     background: rgba(0,0,0,0.15);
     transition: opacity 0.6s ease;
+    outline: 2px solid green; /* DEBUG: show overlay */
   }
 
   .fade-out {
@@ -153,5 +195,6 @@
     height: 300px; /* REQUIRED */
     max-width: 600px;
     margin: 2rem auto;
+    outline: 2px solid yellow; /* DEBUG: show canvas */
   }
 </style>
