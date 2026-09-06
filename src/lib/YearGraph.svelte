@@ -5,6 +5,8 @@
   const { data } = $props();   // runes mode required
   let canvas;
 
+  let overlayVisible = false;  // delay overlay so canvas can render
+
   function smooth(values, radius = 4) {
     const result = [];
     for (let i = 0; i < values.length; i++) {
@@ -23,6 +25,8 @@
   }
 
   onMount(() => {
+    overlayVisible = true; // show overlay AFTER canvas mounts
+
     if (!data || !Array.isArray(data)) return;
 
     const minYear = Math.min(...data.map(d => d.year));
@@ -92,14 +96,14 @@
 </script>
 
 <div class="graph-wrapper">
-  <!-- Overlay with button -->
-  <div id="graph-blur-overlay" class="blur-overlay">
-    <button class="reveal-btn" on:click={reveal}>
-      Reveal Song Distribution Graph
-    </button>
-  </div>
+  {#if overlayVisible}
+    <div id="graph-blur-overlay" class="blur-overlay">
+      <button class="reveal-btn" on:click={reveal}>
+        Reveal Song Distribution Graph
+      </button>
+    </div>
+  {/if}
 
-  <!-- Canvas container that gets blurred -->
   <div id="canvas-container" class="canvas-container">
     <canvas bind:this={canvas}></canvas>
   </div>
@@ -116,6 +120,8 @@
 
   /* REAL blur applied to the canvas container */
   .canvas-container {
+    position: relative;
+    z-index: 1;
     filter: blur(35px);
     transition: filter 0.6s ease;
   }
@@ -131,7 +137,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10;
+    z-index: 2;
     background: rgba(0,0,0,0.15);
     transition: opacity 0.6s ease;
   }
@@ -152,6 +158,7 @@
 
   canvas {
     width: 100%;
+    height: 300px; /* REQUIRED for Chart.js to render */
     max-width: 600px;
     margin: 2rem auto;
   }
