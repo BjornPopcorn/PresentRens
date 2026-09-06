@@ -149,13 +149,21 @@
       </ul>
     </div>
 
-    <div class="divider"></div>
-
     <div class="section">
-      <div class="section-title">Winning</div>
-      <p>
-        The first player to collect 10 correct cards wins the game.
-      </p>
-    </div>
-  </div>
+  <div class="section-title">Winning</div>
+  <p>
+    The first player to collect 10 correct cards wins the game.
+  </p>
 </div>
+
+<div class="divider"></div>
+
+<div class="section">
+  <div class="section-title">Song Distribution</div>
+  <p>This graph shows how many songs appear in each year.</p>
+
+  <YearGraph data={years} />
+</div>
+
+</div> <!-- end .glass -->
+</div> <!-- end .page -->
