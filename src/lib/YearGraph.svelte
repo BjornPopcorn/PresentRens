@@ -66,7 +66,7 @@
     const counts = fullYears.map(y => countMap.get(y) || 0);
 
     // Reduce to anchor points using medians
-    const anchorCount = 12;
+    const anchorCount = 20;
     const segmentSize = Math.ceil(fullYears.length / anchorCount);
 
     const anchorValues = [];
