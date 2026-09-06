@@ -123,10 +123,14 @@
           x: {
             ticks: {
               color: "white",
-              callback: (v) => fullYears[v] // show whole years only
+              callback: (v) => fullYears[v],
+              autoSkip: false,
+              maxRotation: 0,
+              minRotation: 0
             },
             grid: { color: "rgba(255,255,255,0.1)" }
-          },
+          }
+          ,
           y: {
             beginAtZero: true,
             ticks: {
