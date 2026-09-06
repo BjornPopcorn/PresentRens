@@ -5,17 +5,17 @@
   const { data } = $props();
   let canvas;
 
-  // Cubic Hermite spline interpolation
-  function hermiteSpline(xs, ys, samples = 200) {
+  // Cubic Hermite spline interpolation (C² smooth)
+  function hermiteSpline(xs, ys, samples = 40) {
     const n = xs.length;
     const ms = new Array(n);
 
-    // Compute tangents (finite differences)
+    // Compute tangents
     for (let i = 0; i < n; i++) {
       if (i === 0) {
-        ms[i] = (ys[1] - ys[0]);
+        ms[i] = ys[1] - ys[0];
       } else if (i === n - 1) {
-        ms[i] = (ys[n - 1] - ys[n - 2]);
+        ms[i] = ys[n - 1] - ys[n - 2];
       } else {
         ms[i] = (ys[i + 1] - ys[i - 1]) / 2;
       }
@@ -34,10 +34,11 @@
 
       for (let t = 0; t < samples; t++) {
         const u = t / samples;
-        const h00 = (2*u*u*u - 3*u*u + 1);
-        const h10 = (u*u*u - 2*u*u + u);
-        const h01 = (-2*u*u*u + 3*u*u);
-        const h11 = (u*u*u - u*u);
+
+        const h00 = 2*u*u*u - 3*u*u + 1;
+        const h10 = u*u*u - 2*u*u + u;
+        const h01 = -2*u*u*u + 3*u*u;
+        const h11 = u*u*u - u*u;
 
         resultX.push(x0 + (x1 - x0) * u);
         resultY.push(
@@ -68,7 +69,7 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = fullYears.map(y => countMap.get(y) || 0);
 
-    // Reduce to anchor points (preserves dips)
+    // Reduce to anchor points using medians
     const anchorCount = 12;
     const segmentSize = Math.ceil(fullYears.length / anchorCount);
 
@@ -78,9 +79,8 @@
     for (let i = 0; i < anchorCount; i++) {
       const start = i * segmentSize;
       const end = Math.min(fullYears.length, start + segmentSize);
-      const slice = counts.slice(start, end);
 
-      // Use median instead of average or peak
+      const slice = counts.slice(start, end);
       const sorted = [...slice].sort((a, b) => a - b);
       const median = sorted[Math.floor(sorted.length / 2)];
 
@@ -91,13 +91,16 @@
     // Compute C² spline
     const spline = hermiteSpline(anchorYears, anchorValues, 40);
 
+    // Clamp negative values
+    const clampedY = spline.ys.map(v => Math.max(0, v));
+
     new Chart(canvas, {
       type: "line",
       data: {
         labels: spline.xs,
         datasets: [{
           label: "Song Trend",
-          data: spline.ys,
+          data: clampedY,
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.10)",
           tension: 0,          // spline already smooth
@@ -113,11 +116,14 @@
         },
         scales: {
           x: {
-            ticks: { color: "white" },
+            ticks: {
+              color: "white",
+              callback: (v) => Math.round(v) // show whole years only
+            },
             grid: { color: "rgba(255,255,255,0.1)" }
           },
           y: {
-            beginAtZero: true,
+            beginAtZero: true, // no negative values
             ticks: {
               color: "white",
               callback: v => Math.round(v)
