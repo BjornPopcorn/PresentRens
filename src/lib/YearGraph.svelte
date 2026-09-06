@@ -6,7 +6,7 @@
   let canvas;
 
   // Cubic Hermite spline interpolation (C² smooth)
-  function hermiteSpline(xs, ys, samples = 40) {
+  function hermiteSpline(xs, ys, samplesPerSegment = 40) {
     const n = xs.length;
     const ms = new Array(n);
 
@@ -21,26 +21,22 @@
       }
     }
 
-    const resultX = [];
     const resultY = [];
 
     for (let i = 0; i < n - 1; i++) {
-      const x0 = xs[i];
-      const x1 = xs[i + 1];
       const y0 = ys[i];
       const y1 = ys[i + 1];
       const m0 = ms[i];
       const m1 = ms[i + 1];
 
-      for (let t = 0; t < samples; t++) {
-        const u = t / samples;
+      for (let t = 0; t < samplesPerSegment; t++) {
+        const u = t / samplesPerSegment;
 
         const h00 = 2*u*u*u - 3*u*u + 1;
         const h10 = u*u*u - 2*u*u + u;
         const h01 = -2*u*u*u + 3*u*u;
         const h11 = u*u*u - u*u;
 
-        resultX.push(x0 + (x1 - x0) * u);
         resultY.push(
           h00 * y0 +
           h10 * m0 +
@@ -50,7 +46,7 @@
       }
     }
 
-    return { xs: resultX, ys: resultY };
+    return resultY;
   }
 
   onMount(() => {
@@ -73,7 +69,6 @@
     const anchorCount = 12;
     const segmentSize = Math.ceil(fullYears.length / anchorCount);
 
-    const anchorYears = [];
     const anchorValues = [];
 
     for (let i = 0; i < anchorCount; i++) {
@@ -84,26 +79,36 @@
       const sorted = [...slice].sort((a, b) => a - b);
       const median = sorted[Math.floor(sorted.length / 2)];
 
-      anchorYears.push(fullYears[Math.floor((start + end) / 2)]);
       anchorValues.push(median);
     }
 
-    // Compute C² spline
-    const spline = hermiteSpline(anchorYears, anchorValues, 40);
+    // Compute spline Y-values only
+    const splineY = hermiteSpline(
+      [...Array(anchorCount).keys()], // fake X values: 0,1,2,3...
+      anchorValues,
+      40
+    );
 
     // Clamp negative values
-    const clampedY = spline.ys.map(v => Math.max(0, v));
+    const clampedY = splineY.map(v => Math.max(0, v));
+
+    // Stretch spline Y-values to match number of real years
+    const stretchedY = [];
+    for (let i = 0; i < fullYears.length; i++) {
+      const idx = Math.floor(i / fullYears.length * clampedY.length);
+      stretchedY.push(clampedY[idx]);
+    }
 
     new Chart(canvas, {
       type: "line",
       data: {
-        labels: spline.xs,
+        labels: fullYears,   // REAL YEARS ONLY
         datasets: [{
           label: "Song Trend",
-          data: clampedY,
+          data: stretchedY,  // SMOOTH SPLINE VALUES
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.10)",
-          tension: 0,          // spline already smooth
+          tension: 0,        // spline already smooth
           borderWidth: 3,
           pointRadius: 0,
           fill: true
@@ -118,12 +123,12 @@
           x: {
             ticks: {
               color: "white",
-              callback: (v) => Math.round(v) // show whole years only
+              callback: (v) => fullYears[v] // show whole years only
             },
             grid: { color: "rgba(255,255,255,0.1)" }
           },
           y: {
-            beginAtZero: true, // no negative values
+            beginAtZero: true,
             ticks: {
               color: "white",
               callback: v => Math.round(v)
