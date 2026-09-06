@@ -5,6 +5,8 @@
   let audio;
   let bar;
   let fill;
+
+  // Reactive state
   let playing = false;
 
   onMount(() => {
@@ -16,12 +18,20 @@
       requestAnimationFrame(loop);
     };
     loop();
+
+    // Keep UI in sync with actual audio state
+    audio.addEventListener("play", () => playing = true);
+    audio.addEventListener("pause", () => playing = false);
+    audio.addEventListener("ended", () => playing = false);
   });
 
   function toggle() {
     if (!audio) return;
-    playing ? audio.pause() : audio.play();
-    playing = !playing;
+    if (playing) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
   }
 
   function seek(e) {
@@ -40,13 +50,11 @@
 
   <button class="round" on:click={toggle}>
     {#if playing}
-      <!-- Pause icon -->
       <div class="pause-icon">
         <div></div>
         <div></div>
       </div>
     {:else}
-      <!-- Play icon -->
       <div class="play-icon"></div>
     {/if}
   </button>
@@ -76,7 +84,6 @@
     transform: scaleX(0);
   }
 
-  /* Round play/pause button */
   .round {
     width: 70px;
     height: 70px;
@@ -94,7 +101,6 @@
     transform: scale(1.05);
   }
 
-  /* Play triangle */
   .play-icon {
     width: 0;
     height: 0;
@@ -104,7 +110,6 @@
     margin-left: 4px;
   }
 
-  /* Pause bars */
   .pause-icon {
     display: flex;
     gap: 8px;
