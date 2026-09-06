@@ -2,10 +2,9 @@
   import { onMount } from "svelte";
   import Chart from "chart.js/auto";
 
-  const { data } = $props();
+  export let data;
   let canvas;
 
-  // Simple Gaussian-like smoothing over the raw counts
   function smooth(values, radius = 4) {
     const result = [];
     for (let i = 0; i < values.length; i++) {
@@ -26,30 +25,27 @@
   onMount(() => {
     if (!data || !Array.isArray(data)) return;
 
-    // Full year range
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
 
     const years = [];
     for (let y = minYear; y <= maxYear; y++) years.push(y);
 
-    // Fill missing years with 0
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = years.map(y => countMap.get(y) || 0);
 
-    // Smooth but still aligned 1:1 with years
-    const smoothed = smooth(counts, 4).map(v => Math.max(0, v)); // clamp at 0
+    const smoothed = smooth(counts, 4).map(v => Math.max(0, v));
 
     new Chart(canvas, {
       type: "line",
       data: {
-        labels: years,          // real years, no tricks
+        labels: years,
         datasets: [{
           label: "Song Trend",
           data: smoothed,
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.10)",
-          tension: 0.6,         // smooth curve
+          tension: 0.6,
           borderWidth: 3,
           pointRadius: 0,
           fill: true
@@ -62,35 +58,81 @@
         },
         scales: {
           x: {
-              ticks: {
-                color: "white",
-                autoSkip: false,
-                callback: (value, index) => {
-                  return index % 2 === 0 ? years[index] : "";
-                }
-              },
-              grid: { color: "rgba(255,255,255,0.1)" }
-            }
-
-          ,
+            ticks: {
+              color: "white",
+              autoSkip: false,
+              callback: (value, index) => index % 2 === 0 ? years[index] : ""
+            },
+            grid: { color: "rgba(255,255,255,0.1)" }
+          },
           y: {
-              beginAtZero: true,
-              ticks: {
-                color: "white",
-                precision: 0      // ← forces whole numbers without duplicates
-              },
-              grid: { color: "rgba(255,255,255,0.1)" }
-            }
-
+            beginAtZero: true,
+            ticks: {
+              color: "white",
+              precision: 0
+            },
+            grid: { color: "rgba(255,255,255,0.1)" }
+          }
         }
       }
     });
   });
+
+  function reveal() {
+    const overlay = document.getElementById("graph-blur-overlay");
+    overlay.classList.add("fade-out");
+
+    setTimeout(() => {
+      overlay.style.display = "none";
+    }, 400);
+  }
 </script>
 
-<canvas bind:this={canvas}></canvas>
+<div class="graph-wrapper">
+  <div id="graph-blur-overlay" class="blur-overlay">
+    <button class="reveal-btn" on:click={reveal}>
+      Reveal Song Distribution Graph
+    </button>
+  </div>
+
+  <canvas bind:this={canvas}></canvas>
+</div>
 
 <style>
+  .graph-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    margin: 2rem auto;
+  }
+
+  .blur-overlay {
+    position: absolute;
+    inset: 0;
+    backdrop-filter: blur(25px);
+    background: rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    transition: opacity 0.4s ease;
+    z-index: 10;
+  }
+
+  .fade-out {
+    opacity: 0;
+  }
+
+  .reveal-btn {
+    padding: 0.8rem 1.2rem;
+    border-radius: 8px;
+    background: white;
+    color: black;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+  }
+
   canvas {
     width: 100%;
     max-width: 600px;
