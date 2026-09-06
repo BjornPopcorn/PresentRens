@@ -5,8 +5,6 @@
   const { data } = $props();   // runes mode required
   let canvas;
 
-  let overlayVisible = false;  // delay overlay so canvas can render
-
   function smooth(values, radius = 4) {
     const result = [];
     for (let i = 0; i < values.length; i++) {
@@ -25,8 +23,6 @@
   }
 
   onMount(() => {
-    overlayVisible = true; // show overlay AFTER canvas mounts
-
     if (!data || !Array.isArray(data)) return;
 
     const minYear = Math.min(...data.map(d => d.year));
@@ -96,13 +92,11 @@
 </script>
 
 <div class="graph-wrapper">
-  {#if overlayVisible}
-    <div id="graph-blur-overlay" class="blur-overlay">
-      <button class="reveal-btn" on:click={reveal}>
-        Reveal Song Distribution Graph
-      </button>
-    </div>
-  {/if}
+  <div id="graph-blur-overlay" class="blur-overlay">
+    <button class="reveal-btn" on:click={reveal}>
+      Reveal Song Distribution Graph
+    </button>
+  </div>
 
   <div id="canvas-container" class="canvas-container">
     <canvas bind:this={canvas}></canvas>
