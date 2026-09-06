@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import Chart from "chart.js/auto";
 
-  export let data;
+  const { data } = $props();   // ← runes mode required
   let canvas;
 
   function smooth(values, radius = 4) {
