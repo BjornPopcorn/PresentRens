@@ -3,7 +3,9 @@
 <script>
   import YearGraph from "$lib/YearGraph.svelte";
 
-  const { years } = $props();   // <-- this receives the data from +page.js
+  const { years } = $props();
+
+  console.log("Years from props:", years);  // <-- THIS IS THE CORRECT PLACE
 
   const gradientSets = [
     ["#ff5f6d", "#ffc371", "#00c6ff", "#0072ff"],
@@ -16,6 +18,7 @@
   const colors = gradientSets[Math.floor(Math.random() * gradientSets.length)];
   const gradientString = `linear-gradient(135deg, ${colors.join(", ")})`;
 </script>
+
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
@@ -167,7 +170,6 @@
   <!-- DEBUG: SHOW THE YEARS ARRAY -->
   <pre style="color:white; font-size:0.9rem; margin-top:1rem;">
     {JSON.stringify(years, null, 2)}
-  console.log("Years from props:", years);
   </pre>
 </div>
 
