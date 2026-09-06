@@ -158,10 +158,12 @@
 
 <div class="divider"></div>
 
+<!-- NEW GRAPH SECTION -->
 <div class="section">
   <div class="section-title">Song Distribution</div>
   <p>This graph shows how many songs appear in each year.</p>
 
+  <!-- RENDER THE GRAPH -->
   <YearGraph data={years} />
 </div>
 
