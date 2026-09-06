@@ -5,6 +5,26 @@
   const { data } = $props();
   let canvas;
 
+  // Simple LOWESS smoothing
+  function lowess(x, y, f = 0.25) {
+    const n = x.length;
+    const r = Math.floor(n * f);
+    const ySmooth = [];
+
+    for (let i = 0; i < n; i++) {
+      const left = Math.max(0, i - r);
+      const right = Math.min(n - 1, i + r);
+
+      const windowX = x.slice(left, right + 1);
+      const windowY = y.slice(left, right + 1);
+
+      const avg = windowY.reduce((a, b) => a + b, 0) / windowY.length;
+      ySmooth.push(avg);
+    }
+
+    return ySmooth;
+  }
+
   onMount(() => {
     if (!data || !Array.isArray(data)) return;
 
@@ -21,50 +41,22 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = fullYears.map(y => countMap.get(y) || 0);
 
-    // --- ULTRA SMOOTHING ---
-    // Compress into 6 trend points
-    const bucketCount = 6;
-    const bucketSize = Math.ceil(fullYears.length / bucketCount);
-
-    const bucketYears = [];
-    const bucketValues = [];
-
-    for (let i = 0; i < bucketCount; i++) {
-      const start = i * bucketSize;
-      const end = start + bucketSize;
-
-      const slice = counts.slice(start, end);
-      const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-
-      bucketYears.push(fullYears[Math.floor((start + end) / 2)]);
-      bucketValues.push(avg);
-    }
-
-    // Apply wide smoothing (Gaussian-like)
-    const smoothValues = bucketValues.map((_, i) => {
-      const window = [
-        bucketValues[i - 2] ?? bucketValues[i],
-        bucketValues[i - 1] ?? bucketValues[i],
-        bucketValues[i],
-        bucketValues[i + 1] ?? bucketValues[i],
-        bucketValues[i + 2] ?? bucketValues[i]
-      ];
-      return Math.round(window.reduce((a, b) => a + b, 0) / window.length);
-    });
+    // Apply LOWESS smoothing
+    const smoothCounts = lowess(fullYears, counts, 0.35);
 
     new Chart(canvas, {
       type: "line",
       data: {
-        labels: bucketYears,
+        labels: fullYears,
         datasets: [{
           label: "Song Trend",
-          data: smoothValues,
+          data: smoothCounts,
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.10)",
-          tension: 1.0,        // maximum smoothness
+          tension: 0.9,
           borderWidth: 3,
-          pointRadius: 0,      // no dots
-          fill: true           // soft fill
+          pointRadius: 0,
+          fill: true
         }]
       },
       options: {
