@@ -8,7 +8,7 @@
   onMount(() => {
     if (!data || !Array.isArray(data)) return;
 
-    // 1. Build a full year range (min → max)
+    // Build full year range
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
 
@@ -17,16 +17,18 @@
       fullYears.push(y);
     }
 
-    // 2. Map counts into the full range (fill missing years with 0)
+    // Fill missing years with 0
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = fullYears.map(y => countMap.get(y) || 0);
 
-    // 3. Smooth the line using a moving average
+    // Ultra-smooth moving average (5-year window)
     const smoothCounts = counts.map((_, i) => {
       const window = [
+        counts[i - 2] ?? counts[i],
         counts[i - 1] ?? counts[i],
         counts[i],
-        counts[i + 1] ?? counts[i]
+        counts[i + 1] ?? counts[i],
+        counts[i + 2] ?? counts[i]
       ];
       return Math.round(window.reduce((a, b) => a + b, 0) / window.length);
     });
@@ -39,19 +41,17 @@
           label: "Song Trend",
           data: smoothCounts,
           borderColor: "white",
-          backgroundColor: "rgba(255,255,255,0.15)",
-          tension: 0.6,        // smoother curve
+          backgroundColor: "rgba(255,255,255,0.12)",
+          tension: 0.8,        // smoother curve
           borderWidth: 3,
-          pointRadius: 0,      // hide points for cleaner trend
-          fill: true           // soft gradient fill
+          pointRadius: 0,      // no dots
+          fill: true           // soft fill
         }]
       },
       options: {
         plugins: {
           legend: { display: false },
-          tooltip: {
-            enabled: false     // hide exact numbers
-          }
+          tooltip: { enabled: false } // hide exact values
         },
         scales: {
           x: {
@@ -59,12 +59,12 @@
             grid: { color: "rgba(255,255,255,0.1)" }
           },
           y: {
+            beginAtZero: true,
             ticks: {
               color: "white",
-              callback: v => Math.round(v)   // no decimals
+              callback: v => Math.round(v) // no decimals
             },
-            grid: { color: "rgba(255,255,255,0.1)" },
-            beginAtZero: true
+            grid: { color: "rgba(255,255,255,0.1)" }
           }
         }
       }
