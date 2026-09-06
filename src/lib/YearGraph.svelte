@@ -21,7 +21,7 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = fullYears.map(y => countMap.get(y) || 0);
 
-    // --- REDUCE TO ANCHOR POINTS ---
+    // --- REDUCE TO ANCHOR POINTS USING PEAKS ---
     const anchorCount = 8; // smooth but meaningful
     const segmentSize = Math.ceil(fullYears.length / anchorCount);
 
@@ -33,10 +33,12 @@
       const end = Math.min(fullYears.length, start + segmentSize);
 
       const slice = counts.slice(start, end);
-      const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+
+      // Use PEAK instead of average
+      const peak = Math.max(...slice);
 
       anchorYears.push(fullYears[Math.floor((start + end) / 2)]);
-      anchorValues.push(avg);
+      anchorValues.push(peak);
     }
 
     new Chart(canvas, {
