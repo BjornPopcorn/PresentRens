@@ -1,6 +1,10 @@
 <svelte:options runes={true} />
 
 <script>
+  import YearGraph from "$lib/YearGraph.svelte";
+
+  const { years } = $props();   // <-- this receives the data from +page.js
+
   const gradientSets = [
     ["#ff5f6d", "#ffc371", "#00c6ff", "#0072ff"],
     ["#f953c6", "#b91d73", "#43e97b", "#38f9d7"],
