@@ -5,24 +5,31 @@
   const { data } = $props();
   let canvas;
 
-  // Simple LOWESS smoothing
-  function lowess(x, y, f = 0.05) {
-    const n = x.length;
-    const r = Math.floor(n * f);
-    const ySmooth = [];
+  // Gaussian blur helper
+  function gaussianSmooth(values, radius = 3) {
+    const kernel = [];
+    const sigma = radius / 2;
+    const twoSigmaSq = 2 * sigma * sigma;
 
-    for (let i = 0; i < n; i++) {
-      const left = Math.max(0, i - r);
-      const right = Math.min(n - 1, i + r);
-
-      const windowX = x.slice(left, right + 1);
-      const windowY = y.slice(left, right + 1);
-
-      const avg = windowY.reduce((a, b) => a + b, 0) / windowY.length;
-      ySmooth.push(avg);
+    for (let i = -radius; i <= radius; i++) {
+      kernel.push(Math.exp(-(i * i) / twoSigmaSq));
     }
 
-    return ySmooth;
+    const kernelSum = kernel.reduce((a, b) => a + b, 0);
+    const normalizedKernel = kernel.map(v => v / kernelSum);
+
+    const result = [];
+
+    for (let i = 0; i < values.length; i++) {
+      let sum = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const idx = Math.min(values.length - 1, Math.max(0, i + k));
+        sum += values[idx] * normalizedKernel[k + radius];
+      }
+      result.push(sum);
+    }
+
+    return result;
   }
 
   onMount(() => {
@@ -41,8 +48,17 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = fullYears.map(y => countMap.get(y) || 0);
 
-    // Apply LOWESS smoothing
-    const smoothCounts = lowess(fullYears, counts, 0.35);
+    // Normalize counts (0–1)
+    const maxCount = Math.max(...counts);
+    const normalized = counts.map(c => c / maxCount);
+
+    // Apply Gaussian smoothing
+    const blurred = gaussianSmooth(normalized, 4);
+
+    // Blend blurred trend with real data (0.7 trend, 0.3 real)
+    const blended = blurred.map((b, i) => {
+      return Math.round((b * 0.7 + normalized[i] * 0.3) * maxCount);
+    });
 
     new Chart(canvas, {
       type: "line",
@@ -50,7 +66,7 @@
         labels: fullYears,
         datasets: [{
           label: "Song Trend",
-          data: smoothCounts,
+          data: blended,
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.10)",
           tension: 0.9,
