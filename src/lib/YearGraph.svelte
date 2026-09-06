@@ -109,19 +109,23 @@
   .blur-overlay {
     position: absolute;
     inset: 0;
-    backdrop-filter: blur(25px);
-    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(30px);     /* REAL blur */
+    -webkit-backdrop-filter: blur(30px); /* Safari support */
+    background: rgba(0,0,0,0.15);    /* very light tint */
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 12px;
-    transition: opacity 0.4s ease;
+    transition: opacity 0.6s ease, backdrop-filter 0.6s ease;
     z-index: 10;
   }
 
   .fade-out {
     opacity: 0;
+    backdrop-filter: blur(0px);      /* blur animates away */
+    -webkit-backdrop-filter: blur(0px);
   }
+
 
   .reveal-btn {
     padding: 0.8rem 1.2rem;
