@@ -5,9 +5,14 @@
   let audio;
   let bar;
   let fill;
+  let button;
+  let playIcon;
+  let pauseIcon;
+
   let playing = false;
 
   onMount(() => {
+    // Progress bar loop (DOM-only)
     const loop = () => {
       if (audio && fill && audio.duration > 0) {
         const pct = audio.currentTime / audio.duration;
@@ -16,12 +21,38 @@
       requestAnimationFrame(loop);
     };
     loop();
+
+    // Sync UI when audio plays/pauses
+    audio.addEventListener("play", () => updateButton(true));
+    audio.addEventListener("pause", () => updateButton(false));
+    audio.addEventListener("ended", () => updateButton(false));
   });
+
+  function updateButton(isPlaying) {
+    playing = isPlaying;
+
+    // DOM-only icon switching
+    if (playIcon && pauseIcon) {
+      if (playing) {
+        playIcon.style.display = "none";
+        pauseIcon.style.display = "flex";
+      } else {
+        playIcon.style.display = "block";
+        pauseIcon.style.display = "none";
+      }
+    }
+  }
 
   function toggle() {
     if (!audio) return;
-    playing ? audio.pause() : audio.play();
-    playing = !playing;
+
+    if (playing) {
+      audio.pause();
+      updateButton(false);
+    } else {
+      audio.play();
+      updateButton(true);
+    }
   }
 
   function seek(e) {
@@ -38,17 +69,15 @@
     <div class="fill" bind:this={fill}></div>
   </div>
 
-  <button class="round" on:click={toggle}>
-    {#if playing}
-      <!-- Pause icon -->
-      <div class="pause-icon">
-        <div></div>
-        <div></div>
-      </div>
-    {:else}
-      <!-- Play icon -->
-      <div class="play-icon"></div>
-    {/if}
+  <button class="round" bind:this={button} on:click={toggle}>
+    <!-- Play icon -->
+    <div class="play-icon" bind:this={playIcon}></div>
+
+    <!-- Pause icon -->
+    <div class="pause-icon" bind:this={pauseIcon} style="display:none;">
+      <div></div>
+      <div></div>
+    </div>
   </button>
 </div>
 
@@ -76,7 +105,6 @@
     transform: scaleX(0);
   }
 
-  /* Round play/pause button */
   .round {
     width: 70px;
     height: 70px;
@@ -94,7 +122,6 @@
     transform: scale(1.05);
   }
 
-  /* Play triangle */
   .play-icon {
     width: 0;
     height: 0;
@@ -104,9 +131,8 @@
     margin-left: 4px;
   }
 
-  /* Pause bars */
   .pause-icon {
-    display: flex;
+    display: none;
     gap: 8px;
   }
 
