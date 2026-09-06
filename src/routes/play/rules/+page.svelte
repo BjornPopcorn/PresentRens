@@ -149,7 +149,7 @@
       </ul>
     </div>
 
-    <div class="section">
+  <div class="section">
   <div class="section-title">Winning</div>
   <p>
     The first player to collect 10 correct cards wins the game.
@@ -158,14 +158,18 @@
 
 <div class="divider"></div>
 
-<!-- NEW GRAPH SECTION -->
 <div class="section">
   <div class="section-title">Song Distribution</div>
   <p>This graph shows how many songs appear in each year.</p>
 
-  <!-- RENDER THE GRAPH -->
   <YearGraph data={years} />
+
+  <!-- DEBUG: SHOW THE YEARS ARRAY -->
+  <pre style="color:white; font-size:0.9rem; margin-top:1rem;">
+    {JSON.stringify(years, null, 2)}
+  </pre>
 </div>
 
 </div> <!-- end .glass -->
 </div> <!-- end .page -->
+
