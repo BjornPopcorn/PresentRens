@@ -169,10 +169,10 @@
 
   <YearGraph data={years} />
 
-  <!-- DEBUG: SHOW THE YEARS ARRAY -->
-  <pre style="color:white; font-size:0.9rem; margin-top:1rem;">
-    {JSON.stringify(years, null, 2)}
-  </pre>
+ <!-- DEBUG: SHOW THE YEARS ARRAY 
+ <pre style="color:white; font-size:0.9rem; margin-top:1rem;">
+    {JSON.stringify(years, null, 2)} 
+  </pre> -->
 </div>
 
 </div> <!-- end .glass -->
