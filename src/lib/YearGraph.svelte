@@ -2,11 +2,15 @@
   import { onMount } from "svelte";
   import Chart from "chart.js/auto";
 
-  const { data } = $props(); // Svelte 5 runes mode
+  // DOM-only props: Svelte 5 runes mode safe
+  const { data } = $props();
 
   let canvas;
 
   onMount(() => {
+    // Defensive: ensure data exists
+    if (!data || !Array.isArray(data)) return;
+
     const years = data.map(d => d.year);
     const counts = data.map(d => d.count);
 
@@ -19,7 +23,7 @@
           data: counts,
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.2)",
-          tension: 0.4,
+          tension: 0.4, // smooth curve
           borderWidth: 3,
           pointRadius: 4,
           pointBackgroundColor: "white"
