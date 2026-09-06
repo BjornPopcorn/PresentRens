@@ -65,6 +65,8 @@
             ticks: {
               color: "white",
               autoSkip: false      // show all years
+              callback: (value, index) => {
+                   return index % 2 === 0 ? fullYears[index] : "";   
             },
             grid: { color: "rgba(255,255,255,0.1)" }
           },
