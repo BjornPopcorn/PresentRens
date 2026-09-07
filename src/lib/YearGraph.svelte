@@ -133,7 +133,7 @@
 
 <div class="graph-wrapper">
   <div style="background: red; padding: 20px; color: white;">
-    IF YOU SEE THIS BOX, THE DOM IS VISIBLE
+    IF YOU SEE THIS BOX, THE DOM IS VISIBLE!!!!!!!!
   </div>
 
   <div id="canvas-container" style="border: 3px solid lime; padding: 20px;">
