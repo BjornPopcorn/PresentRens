@@ -190,6 +190,19 @@
     cursor: pointer;
     border: none;
   }
+  .graph-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  margin: 2rem auto;
+  overflow: hidden;
+  min-height: 350px; /* ← prevents jumping */
+}
+
+.canvas-container {
+  min-height: 300px; /* ← ensures stable graph area */
+}
+
 
   canvas {
     display: block;
