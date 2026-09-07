@@ -132,14 +132,12 @@
 </script>
 
 <div class="graph-wrapper">
-  <div id="graph-blur-overlay" class="blur-overlay">
-    <button class="reveal-btn" on:click={reveal}>
-      Reveal Song Distribution Graph
-    </button>
+  <div style="background: red; padding: 20px; color: white;">
+    IF YOU SEE THIS BOX, THE DOM IS VISIBLE
   </div>
 
-  <div id="canvas-container" class="canvas-container">
-    <canvas bind:this={canvas}></canvas>
+  <div id="canvas-container" style="border: 3px solid lime; padding: 20px;">
+    <canvas bind:this={canvas} style="border: 3px solid yellow;"></canvas>
   </div>
 </div>
 
