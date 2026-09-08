@@ -25,7 +25,7 @@
   onMount(() => {
     if (!data || !Array.isArray(data) || data.length === 0) return;
 
-    // ⭐ CRITICAL FIX: force internal canvas size
+    // Force internal canvas size to match CSS size
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
 
@@ -56,30 +56,12 @@
         }]
       },
       options: {
-        responsive: false,          // ⭐ required with forced canvas size
-        maintainAspectRatio: false, // ⭐ required with forced canvas size
+        responsive: false,
+        maintainAspectRatio: false,
         animation: false,
         plugins: {
           legend: { display: false },
           tooltip: { enabled: false }
-        },
-        scales: {
-          x: {
-            ticks: {
-              color: "white",
-              autoSkip: false,
-              callback: (value, index) => index % 2 === 0 ? years[index] : ""
-            },
-            grid: { color: "rgba(255,255,255,0.1)" }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              color: "white",
-              precision: 0
-            },
-            grid: { color: "rgba(255,255,255,0.1)" }
-          }
         }
       }
     });
@@ -116,16 +98,17 @@
     width: 100%;
     max-width: 600px;
     margin: 2rem auto;
-    min-height: 350px; /* prevents layout jump */
+    min-height: 350px;
   }
 
+  /* BLUR APPLIED HERE */
   .canvas-container {
-    position: relative;
-    filter: blur(25px); /* softer blur so chart is still visible */
+    filter: blur(35px);
     transition: filter 0.6s ease;
     min-height: 300px;
   }
 
+  /* BLUR REMOVED HERE */
   .canvas-container.focused {
     filter: blur(0px);
   }
