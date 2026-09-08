@@ -8,6 +8,7 @@
   let revealBtn;
   let chartInstance;
 
+  // smoothing helper (same as before)
   function smooth(values, radius = 4) {
     const result = [];
     for (let i = 0; i < values.length; i++) {
@@ -40,15 +41,18 @@
     const counts = years.map(y => countMap.get(y) || 0);
 
     // Smooth and clamp
-    const smoothed = smooth(counts, 4).map(v => Math.max(0, v));
+    const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
 
-    // Compute a compressed Y max (compress visually without adding empty space)
-    const rawMax = Math.max(...counts, 1);
-    // compress to ~60% of actual max (tune factor to taste)
-    const compressFactor = 0.6;
-    const suggestedMax = Math.max(Math.ceil(rawMax * compressFactor), 1);
+    // Visual compression: scale the plotted values down so the whole curve is "flatter"
+    // This reduces amplitude without adding empty space.
+    const compressFactor = 0.55; // tune between 0.4 (very flat) and 0.8 (subtle)
+    const smoothed = smoothedRaw.map(v => v * compressFactor);
 
-    // Create Chart.js chart (Chart will handle devicePixelRatio internally)
+    // Compute suggestedMax to match the visual scale (keeps graph compact)
+    const rawMax = Math.max(...smoothed, 1);
+    const suggestedMax = Math.ceil(rawMax * 1.05);
+
+    // Create Chart.js chart
     chartInstance = new Chart(canvas, {
       type: "line",
       data: {
@@ -91,19 +95,26 @@
     });
 
     // Snapshot after Chart paints. Slight delay ensures rendering finished.
+    // Use a short delay and then create a dataURL from the canvas.
     setTimeout(() => {
       try {
+        // Ensure the canvas internal resolution is stable for crisp snapshot
+        // (Chart.js already draws; toDataURL will capture what was drawn)
         const dataUrl = canvas.toDataURL("image/png");
         if (blurImg) {
           blurImg.src = dataUrl;
           blurImg.style.display = "block";
-          // Align the snapshot exactly to the canvas container
+          // Make sure the snapshot covers the canvas exactly
           blurImg.style.left = "0";
           blurImg.style.top = "0";
           blurImg.style.width = "100%";
           blurImg.style.height = "100%";
-          blurImg.classList.remove("fade-out");
           blurImg.style.opacity = "1";
+          blurImg.classList.remove("fade-out");
+          // Force a layout so subsequent opacity transitions are honored
+          // (helps ensure the browser recognizes the starting opacity)
+          // eslint-disable-next-line no-unused-expressions
+          blurImg.offsetHeight;
         }
       } catch (e) {
         console.warn("Canvas snapshot failed:", e);
@@ -115,18 +126,23 @@
   function reveal() {
     if (!blurImg || !revealBtn) return;
 
-    // Fade the blurred snapshot image out smoothly
-    blurImg.classList.add("fade-out");
+    // Ensure transition is set (defensive)
+    blurImg.style.transition = "opacity 0.8s cubic-bezier(.2,.9,.2,1)";
+    // Force layout then start fade (use requestAnimationFrame to ensure browser applies starting state)
+    requestAnimationFrame(() => {
+      // start fade
+      blurImg.style.opacity = "0";
+      // fade the button slightly and then hide it
+      revealBtn.style.transition = "opacity 0.28s ease";
+      revealBtn.style.opacity = "0";
+      revealBtn.style.pointerEvents = "none";
+    });
 
-    // Fade the button and disable it immediately
-    revealBtn.classList.add("btn-fade");
-    revealBtn.disabled = true;
-
-    // Remove both after animation completes
+    // After animation completes, remove elements so the canvas is fully visible and interactive
     setTimeout(() => {
       if (blurImg) blurImg.style.display = "none";
       if (revealBtn) revealBtn.style.display = "none";
-    }, 750);
+    }, 820);
   }
 </script>
 
@@ -181,11 +197,13 @@
   .blur-image {
     z-index: 20;
     object-fit: cover;
-    filter: blur(4px) saturate(0.95) brightness(0.95);
-    transition: opacity 0.72s cubic-bezier(.2,.9,.2,1);
+    /* stronger blur + darken overlay so underlying details are obscured */
+    filter: blur(14px) saturate(0.9) brightness(0.85);
+    transition: opacity 0.8s cubic-bezier(.2,.9,.2,1);
     opacity: 1;
     pointer-events: none;
     will-change: opacity;
+    background: rgba(0,0,0,0.18); /* subtle darkening to hide details further */
   }
 
   .blur-image.fade-out {
@@ -211,11 +229,5 @@
 
   .reveal-btn:active {
     transform: translate(-50%, -50%) scale(0.96);
-  }
-
-  .reveal-btn.btn-fade {
-    opacity: 0;
-    transition: opacity 0.4s ease;
-    pointer-events: none;
   }
 </style>
