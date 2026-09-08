@@ -10,7 +10,7 @@
   let revealBtn;
   let chartInstance;
 
-  // Lock DPR at mount to avoid line-thickness jitter on mobile
+  // Lock DPR at mount to avoid mobile jitter
   let initialDpr = 1;
   let lastCssW = 0;
 
@@ -34,6 +34,7 @@
     canvasEl.style.height = `${cssHeight}px`;
     const cssW = canvasEl.clientWidth || canvasEl.offsetWidth || 600;
     const cssH = cssHeight;
+    // Only update backing store if width changed meaningfully to avoid re-render jitter
     if (Math.abs(cssW - lastCssW) > 2) {
       canvasEl.width = Math.round(cssW * initialDpr);
       canvasEl.height = Math.round(cssH * initialDpr);
@@ -47,11 +48,13 @@
   onMount(() => {
     if (!Array.isArray(data) || data.length === 0) return;
 
+    // Capture DPR once at mount and use it for all canvas sizing and Chart rendering.
     initialDpr = Math.max(1, window.devicePixelRatio || 1);
 
+    // compressed height (tighter vertical)
     const { cssW } = setCanvasSize(240);
 
-    // Prepare years + counts
+    // Prepare data
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
     const years = [];
@@ -62,19 +65,29 @@
     // smoothing + compression
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
     const compressFactor = 0.5;
-    // small negative baseline to lift the curve slightly; we'll then force visual placement below
-    const baselineOffset = -1.4;
+
+    // small negative baseline to lift the curve slightly before forcing placement
+    // keep baseline modest so we can control final placement via axis bounds
+    const baselineOffset = -1.2;
     const smoothed = smoothedRaw.map(v => v * compressFactor + baselineOffset);
 
-    // Compute Y bounds so the data occupies ~70% of vertical space
+    // Compute Y bounds so the data occupies ~70% of vertical space and sits lower
     const dataMin = Math.min(...smoothed);
     const dataMax = Math.max(...smoothed);
-    const visibleFraction = 0.7; // user requested ~70% of height
+    const visibleFraction = 0.7; // target fraction of chart height occupied by data
     const dataRange = Math.max(1e-6, dataMax - dataMin);
-    // extra space below data so the plotted range expands and the curve sits lower
-    const extraBelow = dataRange * ((1 - visibleFraction) / visibleFraction);
+
+    // PUSH_FACTOR >1 pushes the curve lower (more empty space below)
+    const PUSH_FACTOR = 1.4;
+
+    // extra space below the data to make the curve sit lower
+    const extraBelow = dataRange * ((1 - visibleFraction) / visibleFraction) * PUSH_FACTOR;
+
+    // keep top tight (small headroom) so curve visually sits lower
+    const topHeadroom = dataRange * 0.02;
+
     const yMin = dataMin - extraBelow;
-    const yMax = dataMax; // keep top tight to dataMax so curve sits lower
+    const yMax = dataMax + topHeadroom;
 
     // Round bounds to sensible numbers for Chart.js
     const suggestedMin = Math.floor(yMin);
@@ -95,7 +108,7 @@
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.12)",
           tension: 0.45,
-          borderWidth: 1.8,
+          borderWidth: 1.6, // thin stroke for readability
           pointRadius: 0,
           fill: "start"
         }]
@@ -125,7 +138,7 @@
             grid: { color: "rgba(255,255,255,0.12)" }
           },
           y: {
-            // lock min/max so Chart.js does not auto-adjust
+            // lock min/max so Chart.js does not auto-adjust and the curve sits lower
             min: suggestedMin,
             max: suggestedMax,
             ticks: { display: false },
@@ -136,13 +149,13 @@
           line: {
             borderJoinStyle: "round",
             borderCapStyle: "round",
-            borderWidth: 1.8
+            borderWidth: 1.6
           }
         }
       }
     });
 
-    // overlay
+    // Apply overlay style (fully opaque block)
     if (overlayDiv) {
       overlayDiv.style.background = overlayMode === "gradient" ? overlayGradient : overlayColor;
       overlayDiv.style.left = "0";
