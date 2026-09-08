@@ -54,7 +54,7 @@
 
     // vertical compression + baseline lift
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
-    const compressFactor = 0.30; // more compressed vertically
+    const compressFactor = 0.5; // more compressed vertically
     const baselineOffset = -1.0;
     const smoothed = smoothedRaw.map(v => v * compressFactor + baselineOffset);
 
