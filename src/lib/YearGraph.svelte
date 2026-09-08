@@ -4,8 +4,7 @@
 
   const { data } = $props();
   let canvas;
-  let snapImg;
-  let snapWrap;
+  let blurImg;
   let revealBtn;
   let chartInstance;
 
@@ -26,9 +25,35 @@
     return result;
   }
 
-  function setCanvasCssSize(pxHeight = 300) {
+  // Create a downscaled snapshot dataURL from the visible canvas.
+  // scaleFactor: 0.2 => draw at 20% size (removes high-frequency detail)
+  function createDownscaledDataUrl(srcCanvas, scaleFactor = 0.18) {
+    try {
+      const srcW = srcCanvas.width;
+      const srcH = srcCanvas.height;
+      const dstW = Math.max(1, Math.round(srcW * scaleFactor));
+      const dstH = Math.max(1, Math.round(srcH * scaleFactor));
+
+      // small offscreen canvas
+      const off = document.createElement("canvas");
+      off.width = dstW;
+      off.height = dstH;
+      const ctx = off.getContext("2d");
+
+      // draw scaled down (browser will resample)
+      ctx.drawImage(srcCanvas, 0, 0, srcW, srcH, 0, 0, dstW, dstH);
+
+      // optional: draw again scaled up slightly to soften aliasing (not necessary)
+      // then export a PNG data URL
+      return off.toDataURL("image/png");
+    } catch (e) {
+      console.warn("Downscale snapshot failed", e);
+      return null;
+    }
+  }
+
+  function setCanvasCssSize(pxHeight = 320) {
     if (!canvas) return;
-    // Ensure a stable CSS size so snapshot and overlay align
     canvas.style.width = "100%";
     if (!canvas.style.height) canvas.style.height = `${pxHeight}px`;
   }
@@ -54,7 +79,7 @@
     const rawMax = Math.max(...smoothed, 1);
     const suggestedMax = Math.ceil(rawMax * 1.05);
 
-    // Ensure canvas internal resolution matches CSS size for crisp snapshot
+    // Ensure canvas internal resolution matches CSS size for crisp drawing
     const cssW = canvas.clientWidth || canvas.offsetWidth || 600;
     const cssH = canvas.clientHeight || 320;
     const dpr = window.devicePixelRatio || 1;
@@ -108,46 +133,38 @@
     // Snapshot after Chart paints. Slight delay ensures rendering finished.
     setTimeout(() => {
       try {
-        const dataUrl = canvas.toDataURL("image/png");
-        if (snapImg && snapWrap) {
-          snapImg.src = dataUrl;
-          snapWrap.style.display = "block";
+        // Create a downscaled data URL to remove high-frequency detail
+        const downscaled = createDownscaledDataUrl(canvas, 0.18); // 18% size
+        if (downscaled && blurImg) {
+          blurImg.src = downscaled;
+          blurImg.style.display = "block";
 
-          // Align snapshot exactly to the canvas container
-          snapImg.style.left = "0";
-          snapImg.style.top = "0";
-          snapImg.style.width = "100%";
-          snapImg.style.height = "100%";
-          snapImg.style.opacity = "1";
-
-          // Ensure wrapper covers canvas exactly
-          snapWrap.style.left = "0";
-          snapWrap.style.top = "0";
-          snapWrap.style.width = "100%";
-          snapWrap.style.height = "100%";
+          // Align the snapshot exactly to the canvas container
+          blurImg.style.left = "0";
+          blurImg.style.top = "0";
+          blurImg.style.width = "100%";
+          blurImg.style.height = "100%";
+          blurImg.style.opacity = "1";
 
           // Force layout so transitions start from the correct state
           // eslint-disable-next-line no-unused-expressions
-          snapImg.offsetHeight;
+          blurImg.offsetHeight;
         }
       } catch (e) {
-        console.warn("Canvas snapshot failed:", e);
-        if (snapWrap) snapWrap.style.display = "none";
+        console.warn("Snapshot failed:", e);
+        if (blurImg) blurImg.style.display = "none";
       }
-    }, 120);
+    }, 140);
   });
 
   function reveal() {
-    if (!snapWrap || !snapImg || !revealBtn) return;
+    if (!blurImg || !revealBtn) return;
 
-    // Ensure transitions are set
-    snapWrap.style.transition = "opacity 0.85s cubic-bezier(.2,.9,.2,1)";
-    snapImg.style.transition = "opacity 0.85s cubic-bezier(.2,.9,.2,1)";
-
+    // Ensure transition is present
+    blurImg.style.transition = "opacity 0.85s cubic-bezier(.2,.9,.2,1)";
     // Use RAF to ensure starting state applied, then start fade
     requestAnimationFrame(() => {
-      snapWrap.style.opacity = "0";
-      snapImg.style.opacity = "0";
+      blurImg.style.opacity = "0";
       revealBtn.style.transition = "opacity 0.28s ease";
       revealBtn.style.opacity = "0";
       revealBtn.style.pointerEvents = "none";
@@ -155,63 +172,28 @@
 
     // Remove elements after animation completes
     setTimeout(() => {
-      if (snapWrap) snapWrap.style.display = "none";
-      if (snapImg) snapImg.style.display = "none";
+      if (blurImg) blurImg.style.display = "none";
       if (revealBtn) revealBtn.style.display = "none";
-    }, 920);
+    }, 900);
   }
 </script>
 
-<!-- SVG filter defs: strong gaussian blur + desaturate + contrast reduction -->
-<svg style="position:absolute; width:0; height:0; pointer-events:none;" aria-hidden="true">
-  <defs>
-    <!-- Frost filter: blur then desaturate and slightly reduce contrast.
-         Do NOT blend back with SourceGraphic (that reintroduces detail). -->
-    <filter id="frostFilter" x="-30%" y="-30%" width="160%" height="160%">
-      <!-- strong blur to remove high-frequency detail -->
-      <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="b"/>
-      <!-- desaturate -->
-      <feColorMatrix in="b" type="saturate" values="0.25" result="s"/>
-      <!-- slightly reduce contrast (compress highlights/shadows) -->
-      <feComponentTransfer in="s" result="c">
-        <feFuncR type="linear" slope="0.92" intercept="-0.03"/>
-        <feFuncG type="linear" slope="0.92" intercept="-0.03"/>
-        <feFuncB type="linear" slope="0.92" intercept="-0.03"/>
-      </feComponentTransfer>
-      <!-- small additional blur pass to soften edges -->
-      <feGaussianBlur in="c" stdDeviation="4" result="final"/>
-      <feMerge>
-        <feMergeNode in="final"/>
-      </feMerge>
-    </filter>
-  </defs>
-</svg>
-
 <div class="graph-wrapper">
   <div class="canvas-container">
-    <!-- wrapper that holds the snapshot and frosted overlays -->
-    <div bind:this={snapWrap} class="snap-wrap" style="display:none; position:absolute; left:0; top:0;">
-      <!-- snapshot image with SVG filter applied -->
-      <img
-        bind:this={snapImg}
-        id="graph-snap-image"
-        class="snap-image"
-        alt="snapshot"
-        style="position:absolute; left:0; top:0;"
-      />
-
-      <!-- semi-white wash to mimic frosted glass scattering (normal blend) -->
-      <div class="frost-overlay"></div>
-
-      <!-- grain/noise overlay to break up shapes and make details unreadable -->
-      <div class="grain-overlay" aria-hidden="true"></div>
-    </div>
+    <!-- Blurred downscaled snapshot image placed exactly over the canvas -->
+    <img
+      bind:this={blurImg}
+      id="graph-blur-image"
+      class="blur-image"
+      alt="blurred snapshot"
+      style="display:none; position:absolute; left:0; top:0;"
+    />
 
     <!-- The actual canvas -->
     <canvas bind:this={canvas}></canvas>
   </div>
 
-  <!-- Reveal button sits above everything -->
+  <!-- Reveal button sits above the canvas and snapshot -->
   <button bind:this={revealBtn} class="reveal-btn" on:click={reveal}>
     Reveal Song Distribution Graph
   </button>
@@ -243,17 +225,9 @@
     z-index: 1;
   }
 
-  /* wrapper covering the canvas; we animate this wrapper's opacity as well as the image */
-  .snap-wrap {
+  /* The downscaled snapshot image (base for the frosted effect) */
+  .blur-image {
     z-index: 20;
-    pointer-events: none;
-    opacity: 1;
-    will-change: opacity;
-  }
-
-  /* The snapshot image (base for the frosted effect) */
-  .snap-image {
-    z-index: 21;
     object-fit: cover;
     width: 100%;
     height: 100%;
@@ -261,35 +235,19 @@
     position: absolute;
     left: 0;
     top: 0;
-    /* apply SVG filter for true frosted diffusion + desaturation + contrast tweak */
-    filter: url('#frostFilter');
-    opacity: 1;
+
+    /* key: blur + upscale look */
+    /* blur radius tuned to hide thin lines after downscaling */
+    filter: blur(10px) saturate(0.85) contrast(0.9) brightness(0.9);
+
+    /* subtle overlay to wash out remaining contrast without tinting */
+    background: rgba(255,255,255,0.06);
+
+    /* animate opacity */
     transition: opacity 0.85s cubic-bezier(.2,.9,.2,1);
-  }
-
-  /* A semi-opaque white overlay to create the frosted glass wash (normal blend) */
-  .frost-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 22;
-    background: rgba(255, 255, 255, 0.748); /* subtle wash */
+    opacity: 1;
     pointer-events: none;
-    mix-blend-mode: normal;
-  }
-
-  /* Grain/noise overlay to break up shapes and make details unreadable */
-  .grain-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 23;
-    pointer-events: none;
-    background-image:
-      radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-      radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
-    background-size: 6px 6px, 8px 8px;
-    opacity: 0.55;
-    mix-blend-mode: overlay;
-    filter: blur(0.6px);
+    will-change: opacity;
   }
 
   /* Reveal button above everything */
