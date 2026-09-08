@@ -10,7 +10,6 @@
   let revealBtn;
   let chartInstance;
 
-  // smoothing helper
   function smooth(values, radius = 4) {
     const out = [];
     for (let i = 0; i < values.length; i++) {
@@ -24,8 +23,8 @@
     return out;
   }
 
-  // set canvas CSS/internal sizing (more compressed vertical)
-  function setCanvasSize(cssHeight = 260) {
+  // compressed height and DPR-aware sizing
+  function setCanvasSize(cssHeight = 240) {
     if (!canvasEl) return { cssW: 600, cssH: cssHeight, dpr: 1 };
     canvasEl.style.width = "100%";
     canvasEl.style.height = `${cssHeight}px`;
@@ -42,8 +41,8 @@
   onMount(() => {
     if (!Array.isArray(data) || data.length === 0) return;
 
-    // compressed height
-    const { cssW } = setCanvasSize(260);
+    // compressed height (tighter vertical)
+    const { cssW } = setCanvasSize(240);
 
     // Prepare data
     const minYear = Math.min(...data.map(d => d.year));
@@ -53,22 +52,22 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = years.map(y => countMap.get(y) || 0);
 
-    // stronger vertical compression so graph looks less extreme
+    // vertical compression + baseline lift
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
-    const compressFactor = 0.34; // more compressed vertically
-    const baselineOffset = 1.0;  // raise entire series by 1 to make it look fuller
+    const compressFactor = 0.30; // more compressed vertically
+    const baselineOffset = 1.0;
     const smoothed = smoothedRaw.map(v => v * compressFactor + baselineOffset);
 
-    // compute suggested axis bounds; keep y ticks hidden so numbers won't show
+    // axis bounds (we hide numeric ticks but control range)
     const rawMax = Math.max(...smoothed, 1);
     const suggestedMax = Math.ceil(rawMax * 1.05);
-    // ensure some negative room so the visual baseline feels lifted (may show -1 space if range allows)
     const suggestedMin = Math.min(-1, Math.min(...smoothed) - 1);
 
-    // Responsive tick font size: larger on narrow screens (phones)
-    const tickFontSize = cssW <= 420 ? 15 : 12;
+    // responsive tick font size and rotation
+    const tickFontSize = cssW <= 420 ? 14 : 12;
+    const tickRotation = cssW <= 420 ? 45 : 0; // angled on small screens; change to 90 for vertical
 
-    // Build Chart.js with custom tick callback to show only multiples of 5 (and first/last)
+    // Build Chart.js
     chartInstance = new Chart(canvasEl, {
       type: "line",
       data: {
@@ -77,11 +76,11 @@
           label: "Song Trend",
           data: smoothed,
           borderColor: "white",
-          backgroundColor: "rgba(255,255,255,0.10)",
-          tension: 0.6,
+          backgroundColor: "rgba(255,255,255,0.12)",
+          tension: 0.5,
           borderWidth: 3,
           pointRadius: 0,
-          fill: true
+          fill: "start" // <-- fill to the bottom of chart area
         }]
       },
       options: {
@@ -101,13 +100,13 @@
                 if (year % 5 === 0) return year;
                 return "";
               },
-              maxRotation: 0,
+              maxRotation: tickRotation,
+              minRotation: tickRotation,
               autoSkip: false
             },
             grid: { color: "rgba(255,255,255,0.12)" }
           },
           y: {
-            // hide numeric ticks but use suggestedMin/suggestedMax to control vertical compression and baseline
             ticks: { display: false },
             grid: { color: "rgba(255,255,255,0.06)" },
             suggestedMax,
@@ -131,12 +130,15 @@
       overlayDiv.style.display = "block";
     }
 
-    // Resize handling: recompute tick size and chart sizing on resize
+    // Resize handler: recompute rotation/font on resize
     const onResize = () => {
-      const { cssW: newCssW } = setCanvasSize(260);
-      const newTickSize = newCssW <= 420 ? 15 : 12;
+      const { cssW: newCssW } = setCanvasSize(240);
+      const newTickSize = newCssW <= 420 ? 14 : 12;
+      const newRotation = newCssW <= 420 ? 45 : 0;
       if (chartInstance) {
         chartInstance.options.scales.x.ticks.font.size = newTickSize;
+        chartInstance.options.scales.x.ticks.maxRotation = newRotation;
+        chartInstance.options.scales.x.ticks.minRotation = newRotation;
         chartInstance.resize();
         chartInstance.update();
       }
@@ -189,7 +191,7 @@
   .canvas-container {
     position: relative;
     width: 100%;
-    height: 260px; /* more compressed vertical height */
+    height: 240px; /* compressed vertical height */
     overflow: hidden;
     background: transparent;
   }
@@ -250,7 +252,7 @@
   }
 
   @media (max-width: 420px) {
-    .canvas-container { height: 280px; } /* slightly taller on very small screens if desired */
+    .canvas-container { height: 260px; } /* slightly taller on very small screens */
     .reveal-btn { padding: 0.9rem 1.4rem; font-size: 15px; }
   }
 </style>
