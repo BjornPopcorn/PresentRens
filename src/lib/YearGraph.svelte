@@ -127,7 +127,7 @@
     display: block;
   }
 
-  /* ⭐ Polished blur overlay */
+  /* ⭐ Softer blur + visible graph outline */
   .blur-overlay {
     position: absolute;
     inset: 0;
@@ -136,15 +136,11 @@
     align-items: center;
     justify-content: center;
 
-    /* ⭐ More translucent so graph outline is visible */
-    background: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.06); /* ⭐ slightly lighter */
+    backdrop-filter: blur(8px);         /* ⭐ softer blur */
 
-    /* ⭐ Softer blur */
-    backdrop-filter: blur(12px);
-
-    /* ⭐ Smooth fade animation */
     opacity: 1;
-    transition: opacity 0.7s ease;
+    transition: opacity 0.7s ease;      /* ⭐ real fade animation */
   }
 
   .fade-out {
@@ -164,7 +160,7 @@
     transition: transform 0.2s ease, opacity 0.2s ease;
   }
 
-  /* ⭐ Button subtle click animation */
+  /* ⭐ Subtle click animation */
   .reveal-btn:active {
     transform: scale(0.96);
     opacity: 0.85;
