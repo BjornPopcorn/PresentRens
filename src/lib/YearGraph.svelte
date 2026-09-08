@@ -65,20 +65,18 @@
         scales: {
           x: {
             ticks: {
-              color: "white",   // ⭐ always white
+              color: "white",
               font: { size: 12 }
             },
-            grid: {
-              color: "rgba(255,255,255,0.15)"
-            }
+            grid: { color: "rgba(255,255,255,0.15)" }
           },
           y: {
-            ticks: {
-              display: false    // ⭐ hide y-axis numbers
-            },
-            grid: {
-              color: "rgba(255,255,255,0.10)"
-            }
+            ticks: { display: false },
+            grid: { color: "rgba(255,255,255,0.10)" },
+
+            // ⭐ flatten graph (tune this number if needed)
+            suggestedMax: 10,
+            suggestedMin: 0
           }
         }
       }
@@ -91,20 +89,26 @@
 
     setTimeout(() => {
       overlay.style.display = "none";
-    }, 700);
+    }, 800);
   }
 </script>
 
 <div class="graph-wrapper">
-  <div id="graph-blur-overlay" class="blur-overlay">
-    <button class="reveal-btn" on:click={reveal}>
-      Reveal Song Distribution Graph
-    </button>
-  </div>
+
+  <!-- ⭐ Blur overlay (button is now OUTSIDE so animation works) -->
+  <div id="graph-blur-overlay" class="blur-overlay"></div>
+
+  <!-- ⭐ Button sits above blur overlay -->
+  <button class="reveal-btn" on:click={reveal}>
+    Reveal Song Distribution Graph
+  </button>
 
   <div class="canvas-container">
     <canvas bind:this={canvas}></canvas>
   </div>
+
+  <!-- ⭐ Animation test box -->
+  <div class="test-box"></div>
 </div>
 
 <style>
@@ -132,24 +136,26 @@
     position: absolute;
     inset: 0;
     z-index: 20;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 
-    background: rgba(255,255,255,0.06); /* ⭐ slightly lighter */
-    backdrop-filter: blur(8px);         /* ⭐ softer blur */
+    background: rgba(255,255,255,0.05); /* lighter */
+    backdrop-filter: blur(6px);         /* softer */
 
     opacity: 1;
-    transition: opacity 0.7s ease;      /* ⭐ real fade animation */
+    transition: opacity 0.8s ease;      /* ⭐ real fade animation */
   }
 
   .fade-out {
     opacity: 0;
   }
 
+  /* ⭐ Button above blur */
   .reveal-btn {
-    position: relative;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     z-index: 30;
+
     padding: 0.8rem 1.2rem;
     border-radius: 8px;
     background: white;
@@ -157,12 +163,27 @@
     font-weight: 600;
     cursor: pointer;
     border: none;
+
     transition: transform 0.2s ease, opacity 0.2s ease;
   }
 
   /* ⭐ Subtle click animation */
   .reveal-btn:active {
-    transform: scale(0.96);
+    transform: translate(-50%, -50%) scale(0.96);
     opacity: 0.85;
+  }
+
+  /* ⭐ Animation test box */
+  .test-box {
+    width: 80px;
+    height: 80px;
+    background: red;
+    opacity: 1;
+    transition: opacity 2s ease;
+    margin-top: 1rem;
+  }
+
+  .test-box:hover {
+    opacity: 0;
   }
 </style>
