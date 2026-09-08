@@ -25,7 +25,7 @@
   onMount(() => {
     if (!data || !Array.isArray(data) || data.length === 0) return;
 
-    // Make sure canvas has a proper internal size
+    // Ensure canvas internal resolution matches CSS size
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
 
@@ -62,32 +62,34 @@
         plugins: {
           legend: { display: false },
           tooltip: { enabled: false }
-        },
-        scales: {
-          x: {
-            ticks: {
-              color: "white",
-              autoSkip: false,
-              callback: (value, index) => index % 2 === 0 ? years[index] : ""
-            },
-            grid: { color: "rgba(255,255,255,0.1)" }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              color: "white",
-              precision: 0
-            },
-            grid: { color: "rgba(255,255,255,0.1)" }
-          }
         }
       }
     });
   });
+
+  function reveal() {
+    const container = document.getElementById("canvas-container");
+    const overlay = document.getElementById("graph-blur-overlay");
+
+    container.classList.add("focused");
+    overlay.classList.add("fade-out");
+
+    setTimeout(() => {
+      overlay.style.display = "none";
+    }, 600);
+  }
 </script>
 
 <div class="graph-wrapper">
-  <canvas bind:this={canvas}></canvas>
+  <div id="graph-blur-overlay" class="blur-overlay">
+    <button class="reveal-btn" on:click={reveal}>
+      Reveal Song Distribution Graph
+    </button>
+  </div>
+
+  <div id="canvas-container" class="canvas-container">
+    <canvas bind:this={canvas}></canvas>
+  </div>
 </div>
 
 <style>
@@ -96,6 +98,49 @@
     width: 100%;
     max-width: 600px;
     margin: 2rem auto;
+    min-height: 350px;
+    z-index: 5; /* chart sits above your glass background */
+  }
+
+  /* ⭐ Blur applied BEFORE clicking */
+  .canvas-container {
+    filter: blur(35px);
+    transition: filter 0.6s ease;
+    min-height: 300px;
+    position: relative;
+    z-index: 10; /* chart above background */
+  }
+
+  /* ⭐ Blur removed AFTER clicking */
+  .canvas-container.focused {
+    filter: none;
+  }
+
+  /* Overlay sits ABOVE chart */
+  .blur-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    background: rgba(0,0,0,0.25);
+    backdrop-filter: blur(4px);
+    transition: opacity 0.6s ease;
+  }
+
+  .fade-out {
+    opacity: 0;
+  }
+
+  .reveal-btn {
+    padding: 0.8rem 1.2rem;
+    border-radius: 8px;
+    background: white;
+    color: black;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
   }
 
   canvas {
