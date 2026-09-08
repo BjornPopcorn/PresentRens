@@ -61,6 +61,25 @@
         plugins: {
           legend: { display: false },
           tooltip: { enabled: false }
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: "white",   // ⭐ always white
+              font: { size: 12 }
+            },
+            grid: {
+              color: "rgba(255,255,255,0.15)"
+            }
+          },
+          y: {
+            ticks: {
+              display: false    // ⭐ hide y-axis numbers
+            },
+            grid: {
+              color: "rgba(255,255,255,0.10)"
+            }
+          }
         }
       }
     });
@@ -72,7 +91,7 @@
 
     setTimeout(() => {
       overlay.style.display = "none";
-    }, 600);
+    }, 700);
   }
 </script>
 
@@ -108,7 +127,7 @@
     display: block;
   }
 
-  /* ⭐ Blur overlay (now works because graph is outside .glass) */
+  /* ⭐ Polished blur overlay */
   .blur-overlay {
     position: absolute;
     inset: 0;
@@ -117,10 +136,15 @@
     align-items: center;
     justify-content: center;
 
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(25px);
+    /* ⭐ More translucent so graph outline is visible */
+    background: rgba(255,255,255,0.08);
 
-    transition: opacity 0.6s ease;
+    /* ⭐ Softer blur */
+    backdrop-filter: blur(12px);
+
+    /* ⭐ Smooth fade animation */
+    opacity: 1;
+    transition: opacity 0.7s ease;
   }
 
   .fade-out {
@@ -137,5 +161,12 @@
     font-weight: 600;
     cursor: pointer;
     border: none;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  /* ⭐ Button subtle click animation */
+  .reveal-btn:active {
+    transform: scale(0.96);
+    opacity: 0.85;
   }
 </style>
