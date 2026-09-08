@@ -112,16 +112,21 @@
 
   /* Overlay that blurs/dims the whole section */
   .blur-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 2; /* above graph */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.35);
-    backdrop-filter: blur(12px); /* blur the background behind overlay */
-    transition: opacity 0.6s ease;
-  }
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(255,255,255,0.05); /* transparent enough for blur */
+
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+
+  transition: opacity 0.6s ease;
+}
+
 
   .fade-out {
     opacity: 0;
