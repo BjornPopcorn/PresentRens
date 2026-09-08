@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from "svelte";
   import Chart from "chart.js/auto";
 
-  // Props
+  // runes mode prop access
   const { data, overlayMode = "gradient", overlayColor = "rgba(0,0,0,1)", overlayGradient = "linear-gradient(180deg,#6b21a8 0%, #7c3aed 50%, #4c1d95 100%)" } = $props();
 
   let canvasEl;
@@ -10,7 +10,7 @@
   let revealBtn;
   let chartInstance;
 
-  // Lock DPR at mount to avoid mobile address-bar jitter changing stroke thickness
+  // Keep a fixed DPR captured at mount so mobile UI changes (address bar hide/show) don't rescale the canvas
   let initialDpr = 1;
   let lastCssW = 0;
 
@@ -38,6 +38,7 @@
     if (Math.abs(cssW - lastCssW) > 2) {
       canvasEl.width = Math.round(cssW * initialDpr);
       canvasEl.height = Math.round(cssH * initialDpr);
+      // keep CSS size stable
       canvasEl.style.width = `${cssW}px`;
       canvasEl.style.height = `${cssH}px`;
       lastCssW = cssW;
@@ -48,13 +49,13 @@
   onMount(() => {
     if (!Array.isArray(data) || data.length === 0) return;
 
-    // capture DPR once
+    // Capture DPR once at mount and use it for all canvas sizing and Chart rendering.
     initialDpr = Math.max(1, window.devicePixelRatio || 1);
 
-    // compressed height
+    // compressed height (tighter vertical)
     const { cssW } = setCanvasSize(240);
 
-    // Prepare years + counts
+    // Prepare data
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
     const years = [];
@@ -62,46 +63,22 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = years.map(y => countMap.get(y) || 0);
 
-    // smoothing + compression
+    // vertical compression + baseline lift
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
     const compressFactor = 0.5;
-
-    // baselineOffset: small value to avoid hugging zero; adjust if you want the whole curve higher/lower
-    const baselineOffset = -1.2;
+    const baselineOffset = -2.0;
     const smoothed = smoothedRaw.map(v => v * compressFactor + baselineOffset);
 
-    // --- KEY: compute explicit y.min / y.max so Chart.js does NOT auto-scale ---
-    // We want the plotted data to occupy roughly 70% of the chart height and sit lower.
-    const dataMin = Math.min(...smoothed);
-    const dataMax = Math.max(...smoothed);
-    const dataRange = Math.max(1e-6, dataMax - dataMin);
-
-    // visibleFraction controls how much vertical space the data occupies.
-    // Smaller fraction -> more empty space below -> curve sits lower.
-    // Set to 0.7 for ~70% occupied; reduce to 0.6 or 0.55 to push it lower.
-    const visibleFraction = 0.7;
-
-    // pushFactor lets us nudge the curve further down without changing data values.
-    const pushFactor = 1.2;
-
-    // compute extra space below so the curve sits lower
-    const extraBelow = dataRange * ((1 - visibleFraction) / visibleFraction) * pushFactor;
-
-    // small headroom above the data so top doesn't feel cramped
-    const topHeadroom = dataRange * 0.03;
-
-    const yMin = dataMin - extraBelow;
-    const yMax = dataMax + topHeadroom;
-
-    // Round bounds to sensible numbers
-    const lockedMin = Math.floor(yMin);
-    const lockedMax = Math.ceil(yMax);
+    // axis bounds (we hide numeric ticks but control range)
+    const rawMax = Math.max(...smoothed, 1);
+    const suggestedMax = Math.ceil(rawMax * 1.05);
+    const suggestedMin = Math.min(-1, Math.min(...smoothed) - 1);
 
     // responsive tick font size and rotation
     const tickFontSize = cssW <= 420 ? 14 : 12;
     const tickRotation = cssW <= 420 ? 45 : 0;
 
-    // Build Chart.js with locked DPR and explicit y.min/y.max
+    // Build Chart.js with a fixed devicePixelRatio so line thickness doesn't change when mobile UI toggles
     chartInstance = new Chart(canvasEl, {
       type: "line",
       data: {
@@ -112,7 +89,7 @@
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.12)",
           tension: 0.45,
-          borderWidth: 1.6,
+          borderWidth: 2,     // thinner line
           pointRadius: 0,
           fill: "start"
         }]
@@ -121,7 +98,7 @@
         responsive: false,
         maintainAspectRatio: false,
         animation: false,
-        devicePixelRatio: initialDpr,
+        devicePixelRatio: initialDpr, // lock DPR used by Chart.js
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
         layout: { padding: 0 },
         scales: {
@@ -142,24 +119,23 @@
             grid: { color: "rgba(255,255,255,0.12)" }
           },
           y: {
-            // LOCKED bounds to prevent Chart.js auto-scaling
-            min: lockedMin,
-            max: lockedMax,
             ticks: { display: false },
-            grid: { color: "rgba(255,255,255,0.06)" }
+            grid: { color: "rgba(255,255,255,0.06)" },
+            suggestedMax,
+            suggestedMin
           }
         },
         elements: {
           line: {
             borderJoinStyle: "round",
             borderCapStyle: "round",
-            borderWidth: 1.6
+            borderWidth: 2 // ensure Chart-level default is thin
           }
         }
       }
     });
 
-    // overlay
+    // Apply overlay style (fully opaque block)
     if (overlayDiv) {
       overlayDiv.style.background = overlayMode === "gradient" ? overlayGradient : overlayColor;
       overlayDiv.style.left = "0";
@@ -176,10 +152,11 @@
       const newTickSize = newCssW <= 420 ? 14 : 12;
       const newRotation = newCssW <= 420 ? 45 : 0;
       if (chartInstance) {
-        chartInstance.options.devicePixelRatio = initialDpr;
+        chartInstance.options.devicePixelRatio = initialDpr; // keep locked
         chartInstance.options.scales.x.ticks.font.size = newTickSize;
         chartInstance.options.scales.x.ticks.maxRotation = newRotation;
         chartInstance.options.scales.x.ticks.minRotation = newRotation;
+        // Only trigger a resize/update if width changed meaningfully to avoid jitter when address bar hides/shows
         if (Math.abs(newCssW - lastCssW) > 2) {
           chartInstance.resize();
           chartInstance.update();
@@ -187,11 +164,14 @@
       }
     };
 
-    // Defer resize during scroll to avoid address-bar jitter
+    // Prevent immediate resizes during scroll (mobile address bar hide/show can trigger DPR changes)
     let scrollTimeout = null;
     const onScroll = () => {
       clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => onResize(), 200);
+      // defer resize until user stops scrolling for 200ms
+      scrollTimeout = setTimeout(() => {
+        onResize();
+      }, 200);
     };
 
     window.addEventListener("resize", onResize, { passive: true });
@@ -204,7 +184,7 @@
     });
   });
 
-  // Reveal overlay
+  // Reveal: fade overlay to transparent and hide button
   function reveal() {
     if (!overlayDiv || !revealBtn) return;
     overlayDiv.style.transition = "opacity 0.5s ease";
