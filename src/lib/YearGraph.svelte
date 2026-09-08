@@ -32,18 +32,28 @@
 }
 
 /* ⭐ This pseudo-element blurs EVERYTHING behind it */
-.blur-overlay::before {
-  content: "";
+.blur-overlay {
   position: absolute;
   inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-  /* REAL blur that works everywhere */
+  /* ⭐ Transparent background so blur shows */
+  background: rgba(255,255,255,0.05);
+
+  /* ⭐ Guaranteed blur */
   filter: blur(25px);
 
-  /* Slight tint */
-  background: rgba(255,255,255,0.1);
+  transition: opacity 0.6s ease;
+}
 
-  z-index: -1;
+/* Keep the button crisp */
+.blur-overlay > .reveal-btn {
+  filter: none;
+  position: relative;
+  z-index: 21;
 }
 
 .fade-out {
