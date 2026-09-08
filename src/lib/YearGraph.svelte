@@ -4,7 +4,8 @@
 
   const { data } = $props();
   let canvas;
-  let blurImg; // reference to the snapshot image element
+  let blurImg;
+  let revealBtn;
 
   function smooth(values, radius = 4) {
     const result = [];
@@ -23,16 +24,30 @@
     return result;
   }
 
+  function setCanvasSizeForSnapshot() {
+    // Ensure canvas CSS size is stable, then set internal pixel size for crisp snapshot
+    const cssW = canvas.clientWidth;
+    const cssH = canvas.clientHeight;
+    const dpr = window.devicePixelRatio || 1;
+
+    // Set internal resolution
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+
+    // Keep CSS size unchanged
+    canvas.style.width = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
+  }
+
   onMount(() => {
     if (!data || !Array.isArray(data) || data.length === 0) return;
 
-    // match canvas internal resolution to CSS size
-    canvas.width = canvas.clientWidth * devicePixelRatio;
-    canvas.height = canvas.clientHeight * devicePixelRatio;
-    // scale drawing context if you draw manually; Chart.js handles DPI if configured,
-    // but setting canvas size like this ensures the snapshot is crisp.
-    canvas.style.width = `${canvas.clientWidth}px`;
-    canvas.style.height = `${canvas.clientHeight}px`;
+    // Make sure canvas CSS size is set before Chart draws
+    // If canvas has no explicit CSS height, set a default
+    if (!canvas.style.height) canvas.style.height = "300px";
+
+    // Set internal resolution for crisp snapshot
+    setCanvasSizeForSnapshot();
 
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
@@ -45,7 +60,7 @@
 
     const smoothed = smooth(counts, 4).map(v => Math.max(0, v));
 
-    // Create chart
+    // Create chart (Chart.js will draw into the high-DPI canvas)
     new Chart(canvas, {
       type: "line",
       data: {
@@ -80,7 +95,6 @@
           y: {
             ticks: { display: false },
             grid: { color: "rgba(255,255,255,0.10)" },
-            // flatten the graph visually; tune this value
             suggestedMax: 10,
             suggestedMin: 0
           }
@@ -88,52 +102,70 @@
       }
     });
 
-    // Snapshot after a short delay so Chart has painted
+    // Snapshot after Chart paints. Slight delay ensures rendering finished.
     setTimeout(() => {
-      if (!canvas) return;
       try {
+        // Create a data URL from the high-DPI canvas
         const dataUrl = canvas.toDataURL("image/png");
         if (blurImg) {
+          // Place the snapshot into the image element and make it visible
           blurImg.src = dataUrl;
-          // ensure image is visible and fully opaque initially
-          blurImg.style.opacity = "1";
           blurImg.style.display = "block";
+          // Ensure the image exactly matches the canvas CSS size and position
+          blurImg.style.width = `${canvas.clientWidth}px`;
+          blurImg.style.height = `${canvas.clientHeight}px`;
+          blurImg.style.left = `${canvas.offsetLeft}px`;
+          blurImg.style.top = `${canvas.offsetTop}px`;
+          // Reset any fade class (in case of re-mount)
+          blurImg.classList.remove("fade-out");
         }
       } catch (e) {
-        // toDataURL can fail if canvas is tainted; in that case fallback to non-snapshot approach
-        console.warn("Snapshot failed:", e);
+        // If toDataURL fails (tainted canvas), fall back to showing no snapshot.
+        console.warn("Canvas snapshot failed:", e);
+        if (blurImg) blurImg.style.display = "none";
       }
     }, 80);
   });
 
   function reveal() {
-    // fade the blurred image out (animate opacity)
     if (!blurImg) return;
+    // Fade the blurred snapshot image out smoothly
     blurImg.classList.add("fade-out");
-    // remove from flow after animation completes
+
+    // Hide the button after starting the animation so it doesn't linger
+    if (revealBtn) {
+      revealBtn.style.pointerEvents = "none";
+      revealBtn.classList.add("btn-fade");
+    }
+
+    // Remove elements after animation completes
     setTimeout(() => {
-      blurImg.style.display = "none";
-    }, 700);
+      if (blurImg) blurImg.style.display = "none";
+      if (revealBtn) revealBtn.style.display = "none";
+    }, 750);
   }
 </script>
 
 <div class="graph-wrapper">
-  <!-- Blurred snapshot image sits above the canvas and is animated -->
-  <img bind:this={blurImg} id="graph-blur-image" class="blur-image" alt="blurred snapshot" />
-
-  <!-- Canvas underneath -->
   <div class="canvas-container">
+    <!-- Blurred snapshot image placed inside the same container as the canvas so it lines up exactly -->
+    <img
+      bind:this={blurImg}
+      id="graph-blur-image"
+      class="blur-image"
+      alt="blurred snapshot"
+      style="display:none; position:absolute;"
+    />
+
+    <!-- The actual canvas -->
     <canvas bind:this={canvas}></canvas>
   </div>
 
-  <!-- Reveal button sits above the image -->
-  <button class="reveal-btn" on:click={reveal}>
+  <!-- Reveal button sits above the canvas and snapshot -->
+  <button bind:this={revealBtn} class="reveal-btn" on:click={reveal}>
     Reveal Song Distribution Graph
   </button>
 </div>
-
-<!-- small test box to confirm animations work -->
-<div class="test-box">Hover me to test animation</div>
 
 <style>
   .graph-wrapper {
@@ -147,38 +179,38 @@
   .canvas-container {
     position: relative;
     z-index: 1;
+    width: 100%;
+    height: 300px; /* keep consistent with canvas CSS height */
+    overflow: hidden;
   }
 
   canvas {
-    width: 100%;
-    height: 300px;
     display: block;
-    background: transparent;
-  }
-
-  /* Blurred snapshot image */
-  .blur-image {
-    position: absolute;
-    inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    filter: blur(5px);               /* softer blur; tune as needed */
-    opacity: 1;
-    transition: opacity 0.7s ease;   /* animate opacity on the image itself */
+    background: transparent;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Snapshot image sits exactly over the canvas */
+  .blur-image {
     z-index: 20;
-    display: none;                   /* hidden until snapshot is set */
-    pointer-events: none;            /* let clicks pass through to button if needed */
+    object-fit: cover;           /* cover ensures the snapshot fills the container */
+    filter: blur(4px) saturate(0.95) brightness(0.95); /* softer blur, slight desaturate */
+    transition: opacity 0.72s ease;
+    opacity: 1;
+    pointer-events: none;        /* allow clicks to pass through to the button */
   }
 
   .blur-image.fade-out {
     opacity: 0;
   }
 
-  /* Button above everything */
+  /* Reveal button above everything */
   .reveal-btn {
     position: absolute;
-    top: 50%;
+    top: calc(50% + 0px);
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 30;
@@ -197,20 +229,8 @@
     opacity: 0.9;
   }
 
-  /* Test box to confirm animations */
-  .test-box {
-    width: 160px;
-    padding: 0.8rem;
-    margin: 1rem auto;
-    background: #e11;
-    color: white;
-    text-align: center;
-    border-radius: 8px;
-    opacity: 1;
-    transition: opacity 1.6s ease;
-  }
-
-  .test-box:hover {
+  .reveal-btn.btn-fade {
     opacity: 0;
+    transition: opacity 0.4s ease;
   }
 </style>
