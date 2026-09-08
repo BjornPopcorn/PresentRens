@@ -5,6 +5,7 @@
   const { data } = $props();
   let canvas;
   let blurImg;
+  let blurWrap;
   let revealBtn;
   let chartInstance;
 
@@ -26,7 +27,6 @@
   }
 
   function setCanvasCssSize(pxHeight = 300) {
-    // Ensure canvas has a stable CSS size so snapshot and overlay align
     if (!canvas) return;
     if (!canvas.style.height) canvas.style.height = `${pxHeight}px`;
     canvas.style.width = "100%";
@@ -37,7 +37,6 @@
 
     setCanvasCssSize(300);
 
-    // Build years and counts
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
     const years = [];
@@ -45,12 +44,12 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = years.map(y => countMap.get(y) || 0);
 
-    // Smooth and compress the plotted values so the curve is visually flatter
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
-    const compressFactor = 0.5; // stronger compression; tune 0.4-0.7
+
+    // Compress the plotted values so the whole curve is visually smaller in Y
+    const compressFactor = 0.5; // 0.4-0.6 is a good range; lower = flatter
     const smoothed = smoothedRaw.map(v => v * compressFactor);
 
-    // suggestedMax based on compressed values so the chart doesn't add extra empty space
     const rawMax = Math.max(...smoothed, 1);
     const suggestedMax = Math.ceil(rawMax * 1.05);
 
@@ -63,7 +62,6 @@
     canvas.style.width = `${cssW}px`;
     canvas.style.height = `${cssH}px`;
 
-    // Create Chart.js chart
     chartInstance = new Chart(canvas, {
       type: "line",
       data: {
@@ -109,34 +107,44 @@
     setTimeout(() => {
       try {
         const dataUrl = canvas.toDataURL("image/png");
-        if (blurImg) {
+        if (blurImg && blurWrap) {
           blurImg.src = dataUrl;
-          blurImg.style.display = "block";
+          blurWrap.style.display = "block";
+
           // Align the snapshot exactly to the canvas container
           blurImg.style.left = "0";
           blurImg.style.top = "0";
           blurImg.style.width = "100%";
           blurImg.style.height = "100%";
           blurImg.style.opacity = "1";
-          blurImg.classList.remove("fade-out");
-          // Force layout so the browser registers the starting opacity
+
+          // Ensure wrapper covers canvas exactly
+          blurWrap.style.left = "0";
+          blurWrap.style.top = "0";
+          blurWrap.style.width = "100%";
+          blurWrap.style.height = "100%";
+
+          // Force layout so transitions start from the correct state
           // eslint-disable-next-line no-unused-expressions
           blurImg.offsetHeight;
         }
       } catch (e) {
         console.warn("Canvas snapshot failed:", e);
-        if (blurImg) blurImg.style.display = "none";
+        if (blurWrap) blurWrap.style.display = "none";
       }
     }, 120);
   });
 
   function reveal() {
-    if (!blurImg || !revealBtn) return;
+    if (!blurWrap || !blurImg || !revealBtn) return;
 
-    // Defensive: ensure transition is present
+    // Ensure transitions are set
+    blurWrap.style.transition = "opacity 0.85s cubic-bezier(.2,.9,.2,1)";
     blurImg.style.transition = "opacity 0.85s cubic-bezier(.2,.9,.2,1)";
+
     // Use RAF to ensure starting state applied, then start fade
     requestAnimationFrame(() => {
+      blurWrap.style.opacity = "0";
       blurImg.style.opacity = "0";
       revealBtn.style.transition = "opacity 0.28s ease";
       revealBtn.style.opacity = "0";
@@ -145,28 +153,35 @@
 
     // Remove elements after animation completes
     setTimeout(() => {
+      if (blurWrap) blurWrap.style.display = "none";
       if (blurImg) blurImg.style.display = "none";
       if (revealBtn) revealBtn.style.display = "none";
-    }, 880);
+    }, 900);
   }
 </script>
 
 <div class="graph-wrapper">
   <div class="canvas-container">
-    <!-- Blurred snapshot image placed exactly over the canvas -->
-    <img
-      bind:this={blurImg}
-      id="graph-blur-image"
-      class="blur-image"
-      alt="blurred snapshot"
-      style="display:none; position:absolute; left:0; top:0;"
-    />
+    <!-- wrapper that holds the snapshot and the frosted overlays -->
+    <div bind:this={blurWrap} class="blur-wrap" style="display:none; position:absolute; left:0; top:0;">
+      <img
+        bind:this={blurImg}
+        id="graph-blur-image"
+        class="blur-image"
+        alt="blurred snapshot"
+        style="position:absolute; left:0; top:0;"
+      />
+
+      <!-- Frosted glass overlays to create the "can't focus" look -->
+      <div class="frost-overlay"></div>
+      <div class="grain-overlay"></div>
+    </div>
 
     <!-- The actual canvas -->
     <canvas bind:this={canvas}></canvas>
   </div>
 
-  <!-- Reveal button sits above the canvas and snapshot -->
+  <!-- Reveal button sits above everything -->
   <button bind:this={revealBtn} class="reveal-btn" on:click={reveal}>
     Reveal Song Distribution Graph
   </button>
@@ -198,21 +213,54 @@
     z-index: 1;
   }
 
-  /* Stronger blur + darken so underlying details are obscured */
-  .blur-image {
+  /* wrapper covering the canvas; we animate this wrapper's opacity as well as the image */
+  .blur-wrap {
     z-index: 20;
-    object-fit: cover;
-    /* Strong blur and darken to make graph hard to read */
-    filter: blur(18px) brightness(0.45) saturate(0.9);
-    transition: opacity 0.85s cubic-bezier(.2,.9,.2,1);
-    opacity: 1;
     pointer-events: none;
+    opacity: 1;
     will-change: opacity;
-    background: rgba(0,0,0,0.18);
   }
 
-  .blur-image.fade-out {
-    opacity: 0;
+  /* The snapshot image (base for the frosted effect) */
+  .blur-image {
+    z-index: 21;
+    object-fit: cover;
+    /* strong blur to remove detail */
+    filter: blur(14px) contrast(0.85) saturate(0.85);
+    opacity: 1;
+    transition: opacity 0.85s cubic-bezier(.2,.9,.2,1);
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  /* A semi-opaque white overlay to create the frosted glass "wash" */
+  .frost-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 22;
+    background: rgba(255,255,255,0.20); /* light white wash */
+    mix-blend-mode: screen;
+    pointer-events: none;
+    backdrop-filter: none; /* avoid using backdrop-filter for animation reliability */
+  }
+
+  /* Grain/noise overlay to break up shapes and make details unreadable */
+  .grain-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 23;
+    pointer-events: none;
+    background-image:
+      linear-gradient(transparent 0%, rgba(255,255,255,0.02) 1px),
+      linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.02) 1px);
+    background-size: 3px 3px, 4px 4px;
+    opacity: 0.55;
+    mix-blend-mode: overlay;
+    filter: blur(0.6px);
   }
 
   /* Reveal button above everything */
