@@ -24,9 +24,9 @@
     return out;
   }
 
-  // set canvas CSS/internal sizing (compressed vertical)
-  function setCanvasSize(cssHeight = 300) {
-    if (!canvasEl) return;
+  // set canvas CSS/internal sizing (more compressed vertical)
+  function setCanvasSize(cssHeight = 260) {
+    if (!canvasEl) return { cssW: 600, cssH: cssHeight, dpr: 1 };
     canvasEl.style.width = "100%";
     canvasEl.style.height = `${cssHeight}px`;
     const cssW = canvasEl.clientWidth || canvasEl.offsetWidth || 600;
@@ -43,7 +43,7 @@
     if (!Array.isArray(data) || data.length === 0) return;
 
     // compressed height
-    const { cssW } = setCanvasSize(300);
+    const { cssW } = setCanvasSize(260);
 
     // Prepare data
     const minYear = Math.min(...data.map(d => d.year));
@@ -53,16 +53,20 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = years.map(y => countMap.get(y) || 0);
 
-    // compress vertically less extremely than before
+    // stronger vertical compression so graph looks less extreme
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
-    const compressFactor = 0.42; // tuned down for less extreme vertical range
-    const smoothed = smoothedRaw.map(v => v * compressFactor);
+    const compressFactor = 0.34; // more compressed vertically
+    const baselineOffset = 1.0;  // raise entire series by 1 to make it look fuller
+    const smoothed = smoothedRaw.map(v => v * compressFactor + baselineOffset);
+
+    // compute suggested axis bounds; keep y ticks hidden so numbers won't show
     const rawMax = Math.max(...smoothed, 1);
     const suggestedMax = Math.ceil(rawMax * 1.05);
+    // ensure some negative room so the visual baseline feels lifted (may show -1 space if range allows)
+    const suggestedMin = Math.min(-1, Math.min(...smoothed) - 1);
 
     // Responsive tick font size: larger on narrow screens (phones)
-    // cssW is the canvas CSS width in px; tune thresholds as needed
-    const tickFontSize = cssW <= 420 ? 14 : 12;
+    const tickFontSize = cssW <= 420 ? 15 : 12;
 
     // Build Chart.js with custom tick callback to show only multiples of 5 (and first/last)
     chartInstance = new Chart(canvasEl, {
@@ -92,13 +96,10 @@
               color: "#fff",
               font: { size: tickFontSize, weight: "600" },
               callback: function(value, index, ticks) {
-                // value is the label (year)
                 const year = Number(this.getLabelForValue(value));
-                // always show first and last tick
                 if (index === 0 || index === ticks.length - 1) return year;
-                // show only multiples of 5
                 if (year % 5 === 0) return year;
-                return ""; // hide other ticks
+                return "";
               },
               maxRotation: 0,
               autoSkip: false
@@ -106,10 +107,11 @@
             grid: { color: "rgba(255,255,255,0.12)" }
           },
           y: {
+            // hide numeric ticks but use suggestedMin/suggestedMax to control vertical compression and baseline
             ticks: { display: false },
-            grid: { color: "rgba(255,255,255,0.08)" },
+            grid: { color: "rgba(255,255,255,0.06)" },
             suggestedMax,
-            suggestedMin: 0
+            suggestedMin
           }
         },
         elements: {
@@ -131,8 +133,8 @@
 
     // Resize handling: recompute tick size and chart sizing on resize
     const onResize = () => {
-      const { cssW: newCssW } = setCanvasSize(300);
-      const newTickSize = newCssW <= 420 ? 14 : 12;
+      const { cssW: newCssW } = setCanvasSize(260);
+      const newTickSize = newCssW <= 420 ? 15 : 12;
       if (chartInstance) {
         chartInstance.options.scales.x.ticks.font.size = newTickSize;
         chartInstance.resize();
@@ -187,7 +189,7 @@
   .canvas-container {
     position: relative;
     width: 100%;
-    height: 300px; /* compressed vertical height */
+    height: 260px; /* more compressed vertical height */
     overflow: hidden;
     background: transparent;
   }
@@ -247,9 +249,8 @@
     transform: translate(-50%, -50%) scale(0.96);
   }
 
-  /* Extra CSS fallback for very small screens: increase button and spacing */
   @media (max-width: 420px) {
-    .canvas-container { height: 320px; } /* slightly taller on very small screens if desired */
+    .canvas-container { height: 280px; } /* slightly taller on very small screens if desired */
     .reveal-btn { padding: 0.9rem 1.4rem; font-size: 15px; }
   }
 </style>
