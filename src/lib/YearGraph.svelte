@@ -2,8 +2,8 @@
   import { onMount } from "svelte";
   import Chart from "chart.js/auto";
 
-  // Runes mode prop access
-  const { data, overlayColor = "rgba(0,0,0,0.72)" } = $props();
+  // runes mode prop access
+  const { data, overlayColor = "rgba(0,0,0,1)" } = $props();
 
   let canvasEl;
   let overlayDiv;
@@ -58,7 +58,7 @@
     const rawMax = Math.max(...smoothed, 1);
     const suggestedMax = Math.ceil(rawMax * 1.05);
 
-    // Create Chart.js (no animation)
+    // Create Chart.js (no animation). Canvas background must be transparent.
     chartInstance = new Chart(canvasEl, {
       type: "line",
       data: {
@@ -79,14 +79,18 @@
         maintainAspectRatio: false,
         animation: false,
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        layout: { padding: 0 },
         scales: {
           x: { ticks: { color: "#fff", font: { size: 12 } }, grid: { color: "rgba(255,255,255,0.12)" } },
           y: { ticks: { display: false }, grid: { color: "rgba(255,255,255,0.08)" }, suggestedMax, suggestedMin: 0 }
+        },
+        elements: {
+          line: { borderJoinStyle: "round" }
         }
       }
     });
 
-    // Ensure overlay color matches prop and is aligned
+    // Ensure overlay color is fully opaque and covers the chart completely
     if (overlayDiv) {
       overlayDiv.style.background = overlayColor;
       overlayDiv.style.left = "0";
@@ -94,13 +98,14 @@
       overlayDiv.style.width = "100%";
       overlayDiv.style.height = "100%";
       overlayDiv.style.opacity = "1";
+      overlayDiv.style.display = "block";
     }
   });
 
   // Reveal: fade overlay to transparent and hide button
   function reveal() {
     if (!overlayDiv || !revealBtn) return;
-    overlayDiv.style.transition = "opacity 0.6s cubic-bezier(.2,.9,.2,1)";
+    overlayDiv.style.transition = "opacity 0.5s ease";
     revealBtn.style.transition = "opacity 0.28s ease";
     requestAnimationFrame(() => {
       overlayDiv.style.opacity = "0";
@@ -110,19 +115,19 @@
     setTimeout(() => {
       if (overlayDiv) overlayDiv.style.display = "none";
       if (revealBtn) revealBtn.style.display = "none";
-    }, 700);
+    }, 600);
   }
 </script>
 
 <div class="graph-wrapper">
   <div class="canvas-container">
-    <!-- colored block overlay (simple, reliable) -->
+    <!-- fully opaque colored block overlay that completely hides the chart initially -->
     <div bind:this={overlayDiv} class="color-overlay" aria-hidden="true"></div>
 
-    <!-- Chart.js canvas -->
+    <!-- Chart.js canvas (source). Keep canvas background transparent so page background shows through when overlay removed -->
     <canvas bind:this={canvasEl} class="chart-canvas"></canvas>
 
-    <!-- optional grain to soften the block (keeps it visually pleasing) -->
+    <!-- optional grain on top of the block to avoid a perfectly flat look -->
     <div class="grain-overlay" aria-hidden="true"></div>
   </div>
 
@@ -144,6 +149,7 @@
     width: 100%;
     height: 360px;
     overflow: hidden;
+    /* page background visible behind canvas; keep this as your page background */
     background: linear-gradient(180deg, #0b1220 0%, #0f1724 100%);
   }
 
@@ -155,28 +161,28 @@
     height: 100%;
     z-index: 10;
     display: block;
-    background: transparent;
+    background: transparent; /* IMPORTANT: keep canvas transparent */
   }
 
-  /* Simple colored block overlay that fully covers the chart area */
+  /* Fully opaque colored block overlay that hides the chart completely */
   .color-overlay {
     position: absolute;
     inset: 0;
     z-index: 22;
     pointer-events: none;
-    background: rgba(0,0,0,0.72); /* default; overwritten by prop */
+    background: rgba(0,0,0,1); /* default; overwritten by prop */
     opacity: 1;
     will-change: opacity;
   }
 
-  /* subtle grain to avoid a flat solid block look */
+  /* subtle grain to avoid a flat solid block look (optional) */
   .grain-overlay {
     position: absolute;
     inset: 0;
     z-index: 24;
     pointer-events: none;
     mix-blend-mode: overlay;
-    opacity: 0.12;
+    opacity: 0.08;
     background-image:
       radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
       radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
