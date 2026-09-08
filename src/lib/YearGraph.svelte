@@ -2,17 +2,18 @@
   import { onMount } from "svelte";
   import Chart from "chart.js/auto";
 
-  const { data } = $props();
+  // expects: data = [{ year, count }]
+  export let data = [];
+
   let canvas;
-  let blurImg;
+  let overlayImg;
   let revealBtn;
   let chartInstance;
 
   function smooth(values, radius = 4) {
-    const result = [];
+    const out = [];
     for (let i = 0; i < values.length; i++) {
-      let sum = 0;
-      let count = 0;
+      let sum = 0, count = 0;
       for (let r = -radius; r <= radius; r++) {
         const idx = i + r;
         if (idx >= 0 && idx < values.length) {
@@ -20,14 +21,13 @@
           count++;
         }
       }
-      result.push(sum / count);
+      out.push(sum / Math.max(1, count));
     }
-    return result;
+    return out;
   }
 
-  // Create a downscaled snapshot dataURL from the visible canvas.
-  // scaleFactor: 0.12 => draw at 12% size (removes high-frequency detail)
-  function createDownscaledDataUrl(srcCanvas, scaleFactor = 0.12) {
+  // A: downscale VERY aggressively (5–10%), then upscale + blur
+  function createDownscaledDataUrl(srcCanvas, scaleFactor = 0.08) {
     try {
       const srcW = srcCanvas.width;
       const srcH = srcCanvas.height;
@@ -39,10 +39,8 @@
       off.height = dstH;
       const ctx = off.getContext("2d");
 
-      // draw scaled down (browser resamples)
       ctx.drawImage(srcCanvas, 0, 0, srcW, srcH, 0, 0, dstW, dstH);
 
-      // export PNG data URL
       return off.toDataURL("image/png");
     } catch (e) {
       console.warn("Downscale snapshot failed", e);
@@ -53,31 +51,29 @@
   function setCanvasCssSize(pxHeight = 320) {
     if (!canvas) return;
     canvas.style.width = "100%";
-    if (!canvas.style.height) canvas.style.height = `${pxHeight}px`;
+    canvas.style.height = `${pxHeight}px`;
   }
 
   onMount(() => {
-    if (!data || !Array.isArray(data) || data.length === 0) return;
+    if (!Array.isArray(data) || data.length === 0) return;
 
     setCanvasCssSize(320);
 
-    // Build years and counts
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
     const years = [];
     for (let y = minYear; y <= maxYear; y++) years.push(y);
+
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = years.map(y => countMap.get(y) || 0);
 
-    // Smooth and compress the plotted values so the curve is visually smaller in Y
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
-    const compressFactor = 0.5; // tune 0.4-0.7 for flatter/steeper
+    const compressFactor = 0.5;
     const smoothed = smoothedRaw.map(v => v * compressFactor);
 
     const rawMax = Math.max(...smoothed, 1);
     const suggestedMax = Math.ceil(rawMax * 1.05);
 
-    // Ensure canvas internal resolution matches CSS size for crisp drawing
     const cssW = canvas.clientWidth || canvas.offsetWidth || 600;
     const cssH = canvas.clientHeight || 320;
     const dpr = window.devicePixelRatio || 1;
@@ -86,7 +82,6 @@
     canvas.style.width = `${cssW}px`;
     canvas.style.height = `${cssH}px`;
 
-    // Create Chart.js chart
     chartInstance = new Chart(canvas, {
       type: "line",
       data: {
@@ -112,10 +107,7 @@
         },
         scales: {
           x: {
-            ticks: {
-              color: "#ffffff",
-              font: { size: 12 }
-            },
+            ticks: { color: "#ffffff", font: { size: 12 } },
             grid: { color: "rgba(255,255,255,0.12)" }
           },
           y: {
@@ -128,73 +120,62 @@
       }
     });
 
-    // Snapshot after Chart paints. Slight delay ensures rendering finished.
     setTimeout(() => {
       try {
-        // Create a downscaled data URL to remove high-frequency detail
-        const downscaled = createDownscaledDataUrl(canvas, 0.12); // 12% size for strong diffusion
-        if (downscaled && blurImg) {
-          blurImg.src = downscaled;
-          blurImg.style.display = "block";
+        const downscaled = createDownscaledDataUrl(canvas, 0.08); // 8% of original
+        if (downscaled && overlayImg) {
+          overlayImg.src = downscaled;
+          overlayImg.style.display = "block";
 
-          // Align the snapshot exactly to the canvas container
-          blurImg.style.left = "0";
-          blurImg.style.top = "0";
-          blurImg.style.width = "100%";
-          blurImg.style.height = "100%";
-          blurImg.style.opacity = "1";
+          overlayImg.style.left = "0";
+          overlayImg.style.top = "0";
+          overlayImg.style.width = "100%";
+          overlayImg.style.height = "100%";
+          overlayImg.style.opacity = "1";
 
-          // Ensure smooth resampling (avoid pixelated rendering)
-          blurImg.style.imageRendering = "auto";
-
-          // Force layout so transitions start from the correct state
-          // eslint-disable-next-line no-unused-expressions
-          blurImg.offsetHeight;
+          overlayImg.offsetHeight;
         }
       } catch (e) {
         console.warn("Snapshot failed:", e);
-        if (blurImg) blurImg.style.display = "none";
+        if (overlayImg) overlayImg.style.display = "none";
       }
     }, 160);
   });
 
   function reveal() {
-    if (!blurImg || !revealBtn) return;
+    if (!overlayImg || !revealBtn) return;
 
-    // Ensure transition is present
-    blurImg.style.transition = "opacity 0.85s cubic-bezier(.2,.9,.2,1)";
-    // Use RAF to ensure starting state applied, then start fade
+    overlayImg.style.transition = "opacity 0.9s cubic-bezier(.2,.9,.2,1)";
     requestAnimationFrame(() => {
-      blurImg.style.opacity = "0";
-      revealBtn.style.transition = "opacity 0.28s ease";
+      overlayImg.style.opacity = "0";
+      revealBtn.style.transition = "opacity 0.3s ease";
       revealBtn.style.opacity = "0";
       revealBtn.style.pointerEvents = "none";
     });
 
-    // Remove elements after animation completes
     setTimeout(() => {
-      if (blurImg) blurImg.style.display = "none";
+      if (overlayImg) overlayImg.style.display = "none";
       if (revealBtn) revealBtn.style.display = "none";
-    }, 920);
+    }, 1000);
   }
 </script>
 
 <div class="graph-wrapper">
   <div class="canvas-container">
-    <!-- Blurred downscaled snapshot image placed exactly over the canvas -->
+    <!-- dynamic frosted overlay: tiny downscaled snapshot, upscaled + blur -->
     <img
-      bind:this={blurImg}
-      id="graph-blur-image"
-      class="blur-image"
-      alt="blurred snapshot"
+      bind:this={overlayImg}
+      class="overlay-image"
+      alt="blur overlay"
       style="display:none; position:absolute; left:0; top:0;"
     />
 
-    <!-- The actual canvas -->
     <canvas bind:this={canvas}></canvas>
+
+    <!-- subtle grain to break up residual structure -->
+    <div class="grain-overlay" aria-hidden="true"></div>
   </div>
 
-  <!-- Reveal button sits above the canvas and snapshot -->
   <button bind:this={revealBtn} class="reveal-btn" on:click={reveal}>
     Reveal Song Distribution Graph
   </button>
@@ -204,9 +185,9 @@
   .graph-wrapper {
     position: relative;
     width: 100%;
-    max-width: 600px;
+    max-width: 700px;
     margin: 2rem auto;
-    min-height: 350px;
+    min-height: 360px;
   }
 
   .canvas-container {
@@ -226,10 +207,9 @@
     z-index: 1;
   }
 
-  /* The downscaled snapshot image (base for the frosted effect) */
-  .blur-image {
-    z-index: 20;
-    object-fit: fill; /* match canvas pixel mapping exactly */
+  .overlay-image {
+    z-index: 22;
+    object-fit: fill; /* map pixels 1:1 to canvas area */
     width: 100%;
     height: 100%;
     display: block;
@@ -237,22 +217,31 @@
     left: 0;
     top: 0;
 
-    /* key: upscale blurred look (downscaled source + blur) */
-    filter: blur(12px) saturate(0.85) contrast(0.92) brightness(0.92);
+    /* key: upscale of tiny image + strong blur => real frosted look */
+    filter: blur(18px) saturate(0.6) contrast(0.85) brightness(0.95);
+    background: rgba(255,255,255,0.03);
 
-    /* minimal wash only; rely on blur to obscure detail */
-    background: rgba(255,255,255,0.02);
-
-    /* animate opacity */
-    transition: opacity 0.85s cubic-bezier(.2,.9,.2,1);
+    transition: opacity 0.9s cubic-bezier(.2,.9,.2,1);
     opacity: 1;
     pointer-events: none;
     will-change: opacity;
     image-rendering: auto;
-    transform: translateZ(0); /* promote to its own layer for smooth opacity animation */
   }
 
-  /* Reveal button above everything */
+  .grain-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 23;
+    pointer-events: none;
+    opacity: 0.25;
+    mix-blend-mode: overlay;
+    background-image:
+      radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
+    background-size: 6px 6px, 8px 8px;
+    filter: blur(0.6px);
+  }
+
   .reveal-btn {
     position: absolute;
     top: 50%;
@@ -266,7 +255,7 @@
     font-weight: 600;
     cursor: pointer;
     border: none;
-    transition: opacity 0.28s ease, transform 0.12s ease;
+    transition: opacity 0.3s ease, transform 0.12s ease;
   }
 
   .reveal-btn:active {
