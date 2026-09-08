@@ -77,14 +77,12 @@
 </script>
 
 <div class="graph-wrapper">
-  <!-- Blur overlay ON TOP of the graph -->
   <div id="graph-blur-overlay" class="blur-overlay">
     <button class="reveal-btn" on:click={reveal}>
       Reveal Song Distribution Graph
     </button>
   </div>
 
-  <!-- Graph underneath, untouched -->
   <div class="canvas-container">
     <canvas bind:this={canvas}></canvas>
   </div>
@@ -101,7 +99,7 @@
 
   .canvas-container {
     position: relative;
-    z-index: 1; /* graph layer */
+    z-index: 1;
   }
 
   canvas {
@@ -110,23 +108,24 @@
     display: block;
   }
 
-  /* Overlay that blurs/dims the whole section */
+  /* ⭐ REAL BLUR OVERLAY */
   .blur-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-  background: rgba(165, 185, 47, 0.774); /* transparent enough for blur */
+    /* ⭐ MUST BE TRANSPARENT FOR BLUR TO WORK */
+    background: rgba(255,255,255,0.05);
 
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
+    /* ⭐ REAL BLUR */
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
 
-  transition: opacity 0.6s ease;
-}
-
+    transition: opacity 0.6s ease;
+  }
 
   .fade-out {
     opacity: 0;
