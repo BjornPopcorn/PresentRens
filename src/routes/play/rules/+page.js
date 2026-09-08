@@ -20,7 +20,5 @@ export async function load() {
     .map(([year, count]) => ({ year: Number(year), count }))
     .sort((a, b) => a.year - b.year);
 
-  console.log("Supabase result:", data, "error:", error);
-
   return { years };
 }

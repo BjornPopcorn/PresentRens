@@ -4,8 +4,6 @@
 
   const years = $page.data.years;
 
-  console.log("Years from page:", years);
-
   const gradientSets = [
     ["#ff5f6d", "#ffc371", "#00c6ff", "#0072ff"],
     ["#f953c6", "#b91d73", "#43e97b", "#38f9d7"],
@@ -17,10 +15,6 @@
   const colors = gradientSets[Math.floor(Math.random() * gradientSets.length)];
   const gradientString = `linear-gradient(135deg, ${colors.join(", ")})`;
 </script>
-
-
-
-
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
@@ -35,8 +29,9 @@
   .page {
     min-height: 100vh;
     display: flex;
+    flex-direction: column; /* ⭐ allows graph below glass */
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     padding: 2rem;
     background: var(--gradient);
     background-size: 400% 400%;
@@ -58,6 +53,14 @@
     width: 100%;
     color: white;
     box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+  }
+
+  .graph-section {
+    margin-top: 2rem;
+    width: 100%;
+    max-width: 650px;
+    position: relative;
+    z-index: 1; /* ⭐ graph is OUTSIDE the glass blur */
   }
 
   h1 {
@@ -154,27 +157,21 @@
       </ul>
     </div>
 
-  <div class="section">
-  <div class="section-title">Winning</div>
-  <p>
-    The first player to collect 10 correct cards wins the game.
-  </p>
+    <div class="section">
+      <div class="section-title">Winning</div>
+      <p>The first player to collect 10 correct cards wins the game.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+      <div class="section-title">Song Distribution</div>
+      <p>This graph shows how many songs appear in each year.</p>
+    </div>
+  </div>
+
+  <!-- ⭐ Graph OUTSIDE the glass -->
+  <div class="graph-section">
+    <YearGraph data={years} />
+  </div>
 </div>
-
-<div class="divider"></div>
-
-<div class="section">
-  <div class="section-title">Song Distribution</div>
-  <p>This graph shows how many songs appear in each year.</p>
-
-  <YearGraph data={years} />
-
- <!-- DEBUG: SHOW THE YEARS ARRAY 
- <pre style="color:white; font-size:0.9rem; margin-top:1rem;">
-    {JSON.stringify(years, null, 2)} 
-  </pre> -->
-</div>
-
-</div> <!-- end .glass -->
-</div> <!-- end .page -->
-

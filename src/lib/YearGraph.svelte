@@ -25,7 +25,6 @@
   onMount(() => {
     if (!data || !Array.isArray(data) || data.length === 0) return;
 
-    // Ensure canvas internal resolution matches CSS size
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
 
@@ -65,33 +64,28 @@
         }
       }
     });
-
-    // ⭐ Snapshot the graph AFTER it renders
-    setTimeout(() => {
-      const img = document.getElementById("graph-blur-image");
-      img.src = canvas.toDataURL("image/png");
-    }, 50);
   });
 
   function reveal() {
-    const img = document.getElementById("graph-blur-image");
-    img.classList.add("fade-out");
+    const overlay = document.getElementById("graph-blur-overlay");
+    overlay.classList.add("fade-out");
+
+    setTimeout(() => {
+      overlay.style.display = "none";
+    }, 600);
   }
 </script>
 
 <div class="graph-wrapper">
-  <!-- ⭐ Blurred snapshot image -->
-  <img id="graph-blur-image" class="blur-image" />
+  <div id="graph-blur-overlay" class="blur-overlay">
+    <button class="reveal-btn" on:click={reveal}>
+      Reveal Song Distribution Graph
+    </button>
+  </div>
 
-  <!-- Graph underneath -->
   <div class="canvas-container">
     <canvas bind:this={canvas}></canvas>
   </div>
-
-  <!-- Reveal button -->
-  <button class="reveal-btn" on:click={reveal}>
-    Reveal Song Distribution Graph
-  </button>
 </div>
 
 <style>
@@ -101,24 +95,6 @@
     max-width: 600px;
     margin: 2rem auto;
     min-height: 350px;
-  }
-
-  /* ⭐ Blurred snapshot image */
-  .blur-image {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    filter: blur(25px);
-    opacity: 1;
-    transition: opacity 0.6s ease;
-    z-index: 20;
-  }
-
-  /* ⭐ Fade-out animation */
-  .blur-image.fade-out {
-    opacity: 0;
   }
 
   .canvas-container {
@@ -132,6 +108,25 @@
     display: block;
   }
 
+  /* ⭐ Blur overlay (now works because graph is outside .glass) */
+  .blur-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(25px);
+
+    transition: opacity 0.6s ease;
+  }
+
+  .fade-out {
+    opacity: 0;
+  }
+
   .reveal-btn {
     position: relative;
     z-index: 30;
@@ -142,6 +137,5 @@
     font-weight: 600;
     cursor: pointer;
     border: none;
-    margin-top: 1rem;
   }
 </style>
