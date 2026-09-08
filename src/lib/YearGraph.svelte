@@ -25,7 +25,6 @@
   onMount(() => {
     if (!data || !Array.isArray(data) || data.length === 0) return;
 
-    // Ensure canvas internal resolution matches CSS size
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
 
@@ -68,10 +67,7 @@
   });
 
   function reveal() {
-    const container = document.getElementById("canvas-container");
     const overlay = document.getElementById("graph-blur-overlay");
-
-    container.classList.add("focused");
     overlay.classList.add("fade-out");
 
     setTimeout(() => {
@@ -81,13 +77,15 @@
 </script>
 
 <div class="graph-wrapper">
+  <!-- Blur overlay ON TOP of the graph -->
   <div id="graph-blur-overlay" class="blur-overlay">
     <button class="reveal-btn" on:click={reveal}>
       Reveal Song Distribution Graph
     </button>
   </div>
 
-  <div id="canvas-container" class="canvas-container">
+  <!-- Graph underneath, untouched -->
+  <div class="canvas-container">
     <canvas bind:this={canvas}></canvas>
   </div>
 </div>
@@ -99,33 +97,29 @@
     max-width: 600px;
     margin: 2rem auto;
     min-height: 350px;
-    z-index: 5; /* chart sits above your glass background */
   }
 
-  /* ⭐ Blur applied BEFORE clicking */
   .canvas-container {
-    filter: blur(35px);
-    transition: filter 0.6s ease;
-    min-height: 300px;
     position: relative;
-    z-index: 10; /* chart above background */
+    z-index: 1; /* graph layer */
   }
 
-  /* ⭐ Blur removed AFTER clicking */
-  .canvas-container.focused {
-    filter: none;
+  canvas {
+    width: 100%;
+    height: 300px;
+    display: block;
   }
 
-  /* Overlay sits ABOVE chart */
+  /* Overlay that blurs/dims the whole section */
   .blur-overlay {
     position: absolute;
     inset: 0;
+    z-index: 2; /* above graph */
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 20;
-    background: rgba(0,0,0,0.25);
-    backdrop-filter: blur(4px);
+    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(12px); /* blur the background behind overlay */
     transition: opacity 0.6s ease;
   }
 
@@ -141,11 +135,5 @@
     font-weight: 600;
     cursor: pointer;
     border: none;
-  }
-
-  canvas {
-    width: 100%;
-    height: 300px;
-    display: block;
   }
 </style>
