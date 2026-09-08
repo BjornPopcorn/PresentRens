@@ -10,7 +10,7 @@
   let revealBtn;
   let chartInstance;
 
-  // Keep a fixed DPR captured at mount so mobile UI changes (address bar hide/show) don't rescale the canvas
+  // Lock DPR at mount to avoid line-thickness jitter on mobile
   let initialDpr = 1;
   let lastCssW = 0;
 
@@ -34,11 +34,9 @@
     canvasEl.style.height = `${cssHeight}px`;
     const cssW = canvasEl.clientWidth || canvasEl.offsetWidth || 600;
     const cssH = cssHeight;
-    // Only update backing store if width changed meaningfully to avoid re-render jitter
     if (Math.abs(cssW - lastCssW) > 2) {
       canvasEl.width = Math.round(cssW * initialDpr);
       canvasEl.height = Math.round(cssH * initialDpr);
-      // keep CSS size stable
       canvasEl.style.width = `${cssW}px`;
       canvasEl.style.height = `${cssH}px`;
       lastCssW = cssW;
@@ -49,13 +47,11 @@
   onMount(() => {
     if (!Array.isArray(data) || data.length === 0) return;
 
-    // Capture DPR once at mount and use it for all canvas sizing and Chart rendering.
     initialDpr = Math.max(1, window.devicePixelRatio || 1);
 
-    // compressed height (tighter vertical)
     const { cssW } = setCanvasSize(240);
 
-    // Prepare data
+    // Prepare years + counts
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
     const years = [];
@@ -63,30 +59,32 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = years.map(y => countMap.get(y) || 0);
 
-    // vertical compression + baseline lift
+    // smoothing + compression
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
     const compressFactor = 0.5;
-
-    // ORIGINAL baseline the component used previously (kept for clarity)
-    const originalBaseline = -2.0;
-
-    // USER REQUEST: make the graph sit a bit lower by using 70% of the current vertical offset.
-    // Applying SHIFT_FACTOR = 0.7 to the original baseline produces the requested visual shift.
-    const SHIFT_FACTOR = 0.7;
-    const baselineOffset = originalBaseline * SHIFT_FACTOR; // -2.0 * 0.7 = -1.4
-
+    // small negative baseline to lift the curve slightly; we'll then force visual placement below
+    const baselineOffset = -1.4;
     const smoothed = smoothedRaw.map(v => v * compressFactor + baselineOffset);
 
-    // axis bounds (we hide numeric ticks but control range)
-    const rawMax = Math.max(...smoothed, 1);
-    const suggestedMax = Math.ceil(rawMax * 1.05);
-    const suggestedMin = Math.min(-1, Math.min(...smoothed) - 1);
+    // Compute Y bounds so the data occupies ~70% of vertical space
+    const dataMin = Math.min(...smoothed);
+    const dataMax = Math.max(...smoothed);
+    const visibleFraction = 0.7; // user requested ~70% of height
+    const dataRange = Math.max(1e-6, dataMax - dataMin);
+    // extra space below data so the plotted range expands and the curve sits lower
+    const extraBelow = dataRange * ((1 - visibleFraction) / visibleFraction);
+    const yMin = dataMin - extraBelow;
+    const yMax = dataMax; // keep top tight to dataMax so curve sits lower
+
+    // Round bounds to sensible numbers for Chart.js
+    const suggestedMin = Math.floor(yMin);
+    const suggestedMax = Math.ceil(yMax);
 
     // responsive tick font size and rotation
     const tickFontSize = cssW <= 420 ? 14 : 12;
     const tickRotation = cssW <= 420 ? 45 : 0;
 
-    // Build Chart.js with a fixed devicePixelRatio so line thickness doesn't change when mobile UI toggles
+    // Build Chart.js with locked DPR and explicit y.min/y.max to prevent auto-scaling
     chartInstance = new Chart(canvasEl, {
       type: "line",
       data: {
@@ -97,16 +95,16 @@
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.12)",
           tension: 0.45,
-          borderWidth: 2,     // thinner line for less visual weight
+          borderWidth: 1.8,
           pointRadius: 0,
-          fill: "start"       // fill to bottom of chart area
+          fill: "start"
         }]
       },
       options: {
         responsive: false,
         maintainAspectRatio: false,
         animation: false,
-        devicePixelRatio: initialDpr, // lock DPR used by Chart.js
+        devicePixelRatio: initialDpr,
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
         layout: { padding: 0 },
         scales: {
@@ -127,23 +125,24 @@
             grid: { color: "rgba(255,255,255,0.12)" }
           },
           y: {
+            // lock min/max so Chart.js does not auto-adjust
+            min: suggestedMin,
+            max: suggestedMax,
             ticks: { display: false },
-            grid: { color: "rgba(255,255,255,0.06)" },
-            suggestedMax,
-            suggestedMin
+            grid: { color: "rgba(255,255,255,0.06)" }
           }
         },
         elements: {
           line: {
             borderJoinStyle: "round",
             borderCapStyle: "round",
-            borderWidth: 2
+            borderWidth: 1.8
           }
         }
       }
     });
 
-    // Apply overlay style (fully opaque block)
+    // overlay
     if (overlayDiv) {
       overlayDiv.style.background = overlayMode === "gradient" ? overlayGradient : overlayColor;
       overlayDiv.style.left = "0";
@@ -160,11 +159,10 @@
       const newTickSize = newCssW <= 420 ? 14 : 12;
       const newRotation = newCssW <= 420 ? 45 : 0;
       if (chartInstance) {
-        chartInstance.options.devicePixelRatio = initialDpr; // keep locked
+        chartInstance.options.devicePixelRatio = initialDpr;
         chartInstance.options.scales.x.ticks.font.size = newTickSize;
         chartInstance.options.scales.x.ticks.maxRotation = newRotation;
         chartInstance.options.scales.x.ticks.minRotation = newRotation;
-        // Only trigger a resize/update if width changed meaningfully to avoid jitter when address bar hides/shows
         if (Math.abs(newCssW - lastCssW) > 2) {
           chartInstance.resize();
           chartInstance.update();
@@ -172,14 +170,11 @@
       }
     };
 
-    // Prevent immediate resizes during scroll (mobile address bar hide/show can trigger DPR changes)
+    // Defer resize during scroll to avoid address-bar jitter
     let scrollTimeout = null;
     const onScroll = () => {
       clearTimeout(scrollTimeout);
-      // defer resize until user stops scrolling for 200ms
-      scrollTimeout = setTimeout(() => {
-        onResize();
-      }, 200);
+      scrollTimeout = setTimeout(() => onResize(), 200);
     };
 
     window.addEventListener("resize", onResize, { passive: true });
@@ -192,7 +187,7 @@
     });
   });
 
-  // Reveal: fade overlay to transparent and hide button
+  // Reveal overlay
   function reveal() {
     if (!overlayDiv || !revealBtn) return;
     overlayDiv.style.transition = "opacity 0.5s ease";
