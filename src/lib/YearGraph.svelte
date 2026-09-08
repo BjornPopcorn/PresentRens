@@ -4,6 +4,7 @@
 
   const { data } = $props();
   let canvas;
+  let blurImg; // reference to the snapshot image element
 
   function smooth(values, radius = 4) {
     const result = [];
@@ -25,8 +26,13 @@
   onMount(() => {
     if (!data || !Array.isArray(data) || data.length === 0) return;
 
-    canvas.width = canvas.clientWidth;
-    canvas.height = canvas.clientHeight;
+    // match canvas internal resolution to CSS size
+    canvas.width = canvas.clientWidth * devicePixelRatio;
+    canvas.height = canvas.clientHeight * devicePixelRatio;
+    // scale drawing context if you draw manually; Chart.js handles DPI if configured,
+    // but setting canvas size like this ensures the snapshot is crisp.
+    canvas.style.width = `${canvas.clientWidth}px`;
+    canvas.style.height = `${canvas.clientHeight}px`;
 
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
@@ -39,6 +45,7 @@
 
     const smoothed = smooth(counts, 4).map(v => Math.max(0, v));
 
+    // Create chart
     new Chart(canvas, {
       type: "line",
       data: {
@@ -73,47 +80,60 @@
           y: {
             ticks: { display: false },
             grid: { color: "rgba(255,255,255,0.10)" },
+            // flatten the graph visually; tune this value
             suggestedMax: 10,
             suggestedMin: 0
           }
         }
       }
     });
+
+    // Snapshot after a short delay so Chart has painted
+    setTimeout(() => {
+      if (!canvas) return;
+      try {
+        const dataUrl = canvas.toDataURL("image/png");
+        if (blurImg) {
+          blurImg.src = dataUrl;
+          // ensure image is visible and fully opaque initially
+          blurImg.style.opacity = "1";
+          blurImg.style.display = "block";
+        }
+      } catch (e) {
+        // toDataURL can fail if canvas is tainted; in that case fallback to non-snapshot approach
+        console.warn("Snapshot failed:", e);
+      }
+    }, 80);
   });
 
   function reveal() {
-    const anim = document.getElementById("anim-layer");
-    const blur = document.getElementById("blur-overlay");
-
-    anim.classList.add("fade-out");
-
+    // fade the blurred image out (animate opacity)
+    if (!blurImg) return;
+    blurImg.classList.add("fade-out");
+    // remove from flow after animation completes
     setTimeout(() => {
-      anim.style.display = "none";
-      blur.style.display = "none";
-    }, 800);
+      blurImg.style.display = "none";
+    }, 700);
   }
 </script>
 
 <div class="graph-wrapper">
+  <!-- Blurred snapshot image sits above the canvas and is animated -->
+  <img bind:this={blurImg} id="graph-blur-image" class="blur-image" alt="blurred snapshot" />
 
-  <!-- ⭐ Blur overlay (static) -->
-  <div id="blur-overlay" class="blur-overlay"></div>
-
-  <!-- ⭐ Dummy animation layer (transparent, animates smoothly) -->
-  <div id="anim-layer" class="anim-layer"></div>
-
-  <!-- ⭐ Button above everything -->
-  <button class="reveal-btn" on:click={reveal}>
-    Reveal Song Distribution Graph
-  </button>
-
+  <!-- Canvas underneath -->
   <div class="canvas-container">
     <canvas bind:this={canvas}></canvas>
   </div>
+
+  <!-- Reveal button sits above the image -->
+  <button class="reveal-btn" on:click={reveal}>
+    Reveal Song Distribution Graph
+  </button>
 </div>
 
-<!-- Animation test box -->
-<div class="test-box">Hover me</div>
+<!-- small test box to confirm animations work -->
+<div class="test-box">Hover me to test animation</div>
 
 <style>
   .graph-wrapper {
@@ -133,39 +153,35 @@
     width: 100%;
     height: 300px;
     display: block;
+    background: transparent;
   }
 
-  /* ⭐ Blur overlay (static, not animated) */
-  .blur-overlay {
+  /* Blurred snapshot image */
+  .blur-image {
     position: absolute;
     inset: 0;
-    z-index: 20;
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(6px);
-  }
-
-  /* ⭐ Dummy animation layer (transparent, animates opacity) */
-  .anim-layer {
-    position: absolute;
-    inset: 0;
-    z-index: 25;
-    background: rgba(255,255,255,0.001); /* invisible */
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(5px);               /* softer blur; tune as needed */
     opacity: 1;
-    transition: opacity 0.8s ease;
+    transition: opacity 0.7s ease;   /* animate opacity on the image itself */
+    z-index: 20;
+    display: none;                   /* hidden until snapshot is set */
+    pointer-events: none;            /* let clicks pass through to button if needed */
   }
 
-  .fade-out {
+  .blur-image.fade-out {
     opacity: 0;
   }
 
-  /* ⭐ Button */
+  /* Button above everything */
   .reveal-btn {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 30;
-
     padding: 0.8rem 1.2rem;
     border-radius: 8px;
     background: white;
@@ -173,27 +189,25 @@
     font-weight: 600;
     cursor: pointer;
     border: none;
-
-    transition: transform 0.2s ease, opacity 0.2s ease;
+    transition: transform 0.18s ease, opacity 0.18s ease;
   }
 
   .reveal-btn:active {
     transform: translate(-50%, -50%) scale(0.96);
-    opacity: 0.85;
+    opacity: 0.9;
   }
 
-  /* ⭐ Animation test box */
+  /* Test box to confirm animations */
   .test-box {
-    width: 140px;
-    padding: 1rem;
+    width: 160px;
+    padding: 0.8rem;
     margin: 1rem auto;
-    background: red;
+    background: #e11;
     color: white;
     text-align: center;
     border-radius: 8px;
-
     opacity: 1;
-    transition: opacity 2s ease;
+    transition: opacity 1.6s ease;
   }
 
   .test-box:hover {
