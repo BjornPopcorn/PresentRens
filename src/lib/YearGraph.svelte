@@ -66,7 +66,15 @@
     // vertical compression + baseline lift
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
     const compressFactor = 0.5;
-    const baselineOffset = -2.0;
+
+    // ORIGINAL baseline the component used previously (kept for clarity)
+    const originalBaseline = -2.0;
+
+    // USER REQUEST: make the graph sit a bit lower by using 70% of the current vertical offset.
+    // Applying SHIFT_FACTOR = 0.7 to the original baseline produces the requested visual shift.
+    const SHIFT_FACTOR = 0.7;
+    const baselineOffset = originalBaseline * SHIFT_FACTOR; // -2.0 * 0.7 = -1.4
+
     const smoothed = smoothedRaw.map(v => v * compressFactor + baselineOffset);
 
     // axis bounds (we hide numeric ticks but control range)
@@ -89,9 +97,9 @@
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.12)",
           tension: 0.45,
-          borderWidth: 2,     // thinner line
+          borderWidth: 2,     // thinner line for less visual weight
           pointRadius: 0,
-          fill: "start"
+          fill: "start"       // fill to bottom of chart area
         }]
       },
       options: {
@@ -129,7 +137,7 @@
           line: {
             borderJoinStyle: "round",
             borderCapStyle: "round",
-            borderWidth: 2 // ensure Chart-level default is thin
+            borderWidth: 2
           }
         }
       }
