@@ -10,6 +10,9 @@
   let revealBtn;
   let chartInstance;
 
+  // Keep a fixed DPR captured at mount so mobile UI changes (address bar hide/show) don't rescale the canvas
+  let initialDpr = 1;
+
   function smooth(values, radius = 4) {
     const out = [];
     for (let i = 0; i < values.length; i++) {
@@ -23,23 +26,26 @@
     return out;
   }
 
-  // compressed height and DPR-aware sizing
+  // DPR-aware sizing but using the fixed initialDpr
   function setCanvasSize(cssHeight = 240) {
-    if (!canvasEl) return { cssW: 600, cssH: cssHeight, dpr: 1 };
+    if (!canvasEl) return { cssW: 600, cssH: cssHeight, dpr: initialDpr };
     canvasEl.style.width = "100%";
     canvasEl.style.height = `${cssHeight}px`;
     const cssW = canvasEl.clientWidth || canvasEl.offsetWidth || 600;
     const cssH = cssHeight;
-    const dpr = window.devicePixelRatio || 1;
-    canvasEl.width = Math.round(cssW * dpr);
-    canvasEl.height = Math.round(cssH * dpr);
+    canvasEl.width = Math.round(cssW * initialDpr);
+    canvasEl.height = Math.round(cssH * initialDpr);
+    // keep CSS size stable
     canvasEl.style.width = `${cssW}px`;
     canvasEl.style.height = `${cssH}px`;
-    return { cssW, cssH, dpr };
+    return { cssW, cssH, dpr: initialDpr };
   }
 
   onMount(() => {
     if (!Array.isArray(data) || data.length === 0) return;
+
+    // Capture DPR once at mount and use it for all canvas sizing and Chart rendering.
+    initialDpr = Math.max(1, window.devicePixelRatio || 1);
 
     // compressed height (tighter vertical)
     const { cssW } = setCanvasSize(240);
@@ -54,7 +60,7 @@
 
     // vertical compression + baseline lift
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
-    const compressFactor = 0.5; // more compressed vertically
+    const compressFactor = 0.5;
     const baselineOffset = -2.0;
     const smoothed = smoothedRaw.map(v => v * compressFactor + baselineOffset);
 
@@ -65,9 +71,9 @@
 
     // responsive tick font size and rotation
     const tickFontSize = cssW <= 420 ? 14 : 12;
-    const tickRotation = cssW <= 420 ? 45 : 0; // angled on small screens; change to 90 for vertical
+    const tickRotation = cssW <= 420 ? 45 : 0;
 
-    // Build Chart.js
+    // Build Chart.js with a fixed devicePixelRatio so line thickness doesn't change when mobile UI toggles
     chartInstance = new Chart(canvasEl, {
       type: "line",
       data: {
@@ -80,13 +86,14 @@
           tension: 0.5,
           borderWidth: 3,
           pointRadius: 0,
-          fill: "start" // <-- fill to the bottom of chart area
+          fill: "start"
         }]
       },
       options: {
         responsive: false,
         maintainAspectRatio: false,
         animation: false,
+        devicePixelRatio: initialDpr, // FIX: lock DPR used by Chart.js
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
         layout: { padding: 0 },
         scales: {
@@ -114,7 +121,7 @@
           }
         },
         elements: {
-          line: { borderJoinStyle: "round" }
+          line: { borderJoinStyle: "round", borderWidth: 3 } // ensure explicit borderWidth
         }
       }
     });
@@ -130,12 +137,13 @@
       overlayDiv.style.display = "block";
     }
 
-    // Resize handler: recompute rotation/font on resize
+    // Resize handler: recompute font/rotation and resize chart but keep DPR locked
     const onResize = () => {
       const { cssW: newCssW } = setCanvasSize(240);
       const newTickSize = newCssW <= 420 ? 14 : 12;
       const newRotation = newCssW <= 420 ? 45 : 0;
       if (chartInstance) {
+        chartInstance.options.devicePixelRatio = initialDpr; // keep locked
         chartInstance.options.scales.x.ticks.font.size = newTickSize;
         chartInstance.options.scales.x.ticks.maxRotation = newRotation;
         chartInstance.options.scales.x.ticks.minRotation = newRotation;
@@ -143,10 +151,23 @@
         chartInstance.update();
       }
     };
-    window.addEventListener("resize", onResize);
+
+    // Prevent immediate resizes during scroll (mobile address bar hide/show can trigger DPR changes)
+    let scrollTimeout = null;
+    const onScroll = () => {
+      clearTimeout(scrollTimeout);
+      // defer resize until user stops scrolling for 150ms
+      scrollTimeout = setTimeout(() => {
+        onResize();
+      }, 150);
+    };
+
+    window.addEventListener("resize", onResize, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
 
     onDestroy(() => {
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll);
       if (chartInstance) chartInstance.destroy();
     });
   });
@@ -191,7 +212,7 @@
   .canvas-container {
     position: relative;
     width: 100%;
-    height: 240px; /* compressed vertical height */
+    height: 240px;
     overflow: hidden;
     background: transparent;
   }
@@ -205,6 +226,9 @@
     z-index: 10;
     display: block;
     background: transparent;
+    image-rendering: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   .color-overlay {
@@ -252,7 +276,7 @@
   }
 
   @media (max-width: 420px) {
-    .canvas-container { height: 260px; } /* slightly taller on very small screens */
+    .canvas-container { height: 260px; }
     .reveal-btn { padding: 0.9rem 1.4rem; font-size: 15px; }
   }
 </style>
