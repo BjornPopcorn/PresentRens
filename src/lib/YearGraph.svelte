@@ -1,12 +1,8 @@
 <script>
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import Chart from "chart.js/auto";
 
-  // Runes mode prop access
-  // data: [{ year, count }]
-  // overlayMode: "solid" | "gradient"
-  // overlayColor: CSS color for solid mode (default opaque)
-  // overlayGradient: CSS gradient string for gradient mode (default purple-ish)
+  // runes mode prop access
   const { data, overlayMode = "gradient", overlayColor = "rgba(0,0,0,1)", overlayGradient = "linear-gradient(180deg,#6b21a8 0%, #7c3aed 50%, #4c1d95 100%)" } = $props();
 
   let canvasEl;
@@ -14,6 +10,7 @@
   let revealBtn;
   let chartInstance;
 
+  // smoothing helper
   function smooth(values, radius = 4) {
     const out = [];
     for (let i = 0; i < values.length; i++) {
@@ -27,7 +24,8 @@
     return out;
   }
 
-  function setCanvasSize(cssHeight = 360) {
+  // set canvas CSS/internal sizing (compressed vertical)
+  function setCanvasSize(cssHeight = 300) {
     if (!canvasEl) return;
     canvasEl.style.width = "100%";
     canvasEl.style.height = `${cssHeight}px`;
@@ -38,15 +36,16 @@
     canvasEl.height = Math.round(cssH * dpr);
     canvasEl.style.width = `${cssW}px`;
     canvasEl.style.height = `${cssH}px`;
+    return { cssW, cssH, dpr };
   }
 
   onMount(() => {
     if (!Array.isArray(data) || data.length === 0) return;
 
-    // Stabilize CSS size and DPR
-    setCanvasSize(360);
+    // compressed height
+    const { cssW } = setCanvasSize(300);
 
-    // Prepare chart data
+    // Prepare data
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
     const years = [];
@@ -54,13 +53,18 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = years.map(y => countMap.get(y) || 0);
 
+    // compress vertically less extremely than before
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
-    const compressFactor = 0.5;
+    const compressFactor = 0.42; // tuned down for less extreme vertical range
     const smoothed = smoothedRaw.map(v => v * compressFactor);
     const rawMax = Math.max(...smoothed, 1);
     const suggestedMax = Math.ceil(rawMax * 1.05);
 
-    // Create Chart.js (no animation). Canvas background must be transparent.
+    // Responsive tick font size: larger on narrow screens (phones)
+    // cssW is the canvas CSS width in px; tune thresholds as needed
+    const tickFontSize = cssW <= 420 ? 14 : 12;
+
+    // Build Chart.js with custom tick callback to show only multiples of 5 (and first/last)
     chartInstance = new Chart(canvasEl, {
       type: "line",
       data: {
@@ -83,10 +87,34 @@
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
         layout: { padding: 0 },
         scales: {
-          x: { ticks: { color: "#fff", font: { size: 12 } }, grid: { color: "rgba(255,255,255,0.12)" } },
-          y: { ticks: { display: false }, grid: { color: "rgba(255,255,255,0.08)" }, suggestedMax, suggestedMin: 0 }
+          x: {
+            ticks: {
+              color: "#fff",
+              font: { size: tickFontSize, weight: "600" },
+              callback: function(value, index, ticks) {
+                // value is the label (year)
+                const year = Number(this.getLabelForValue(value));
+                // always show first and last tick
+                if (index === 0 || index === ticks.length - 1) return year;
+                // show only multiples of 5
+                if (year % 5 === 0) return year;
+                return ""; // hide other ticks
+              },
+              maxRotation: 0,
+              autoSkip: false
+            },
+            grid: { color: "rgba(255,255,255,0.12)" }
+          },
+          y: {
+            ticks: { display: false },
+            grid: { color: "rgba(255,255,255,0.08)" },
+            suggestedMax,
+            suggestedMin: 0
+          }
         },
-        elements: { line: { borderJoinStyle: "round" } }
+        elements: {
+          line: { borderJoinStyle: "round" }
+        }
       }
     });
 
@@ -100,6 +128,23 @@
       overlayDiv.style.opacity = "1";
       overlayDiv.style.display = "block";
     }
+
+    // Resize handling: recompute tick size and chart sizing on resize
+    const onResize = () => {
+      const { cssW: newCssW } = setCanvasSize(300);
+      const newTickSize = newCssW <= 420 ? 14 : 12;
+      if (chartInstance) {
+        chartInstance.options.scales.x.ticks.font.size = newTickSize;
+        chartInstance.resize();
+        chartInstance.update();
+      }
+    };
+    window.addEventListener("resize", onResize);
+
+    onDestroy(() => {
+      window.removeEventListener("resize", onResize);
+      if (chartInstance) chartInstance.destroy();
+    });
   });
 
   // Reveal: fade overlay to transparent and hide button
@@ -121,13 +166,8 @@
 
 <div class="graph-wrapper">
   <div class="canvas-container">
-    <!-- fully opaque colored block overlay that completely hides the chart initially -->
     <div bind:this={overlayDiv} class="color-overlay" aria-hidden="true"></div>
-
-    <!-- Chart.js canvas (source). Keep canvas background transparent so page background shows through when overlay removed -->
     <canvas bind:this={canvasEl} class="chart-canvas"></canvas>
-
-    <!-- optional grain on top of the block to keep it visually pleasing -->
     <div class="grain-overlay" aria-hidden="true"></div>
   </div>
 
@@ -147,9 +187,9 @@
   .canvas-container {
     position: relative;
     width: 100%;
-    height: 360px;
+    height: 300px; /* compressed vertical height */
     overflow: hidden;
-    background: transparent; /* keep page background visible behind canvas */
+    background: transparent;
   }
 
   .chart-canvas {
@@ -160,21 +200,19 @@
     height: 100%;
     z-index: 10;
     display: block;
-    background: transparent; /* IMPORTANT: keep canvas transparent */
+    background: transparent;
   }
 
-  /* Fully opaque colored block overlay that hides the chart completely */
   .color-overlay {
     position: absolute;
     inset: 0;
     z-index: 22;
     pointer-events: none;
-    background: rgba(0,0,0,1); /* default; overwritten by prop */
+    background: rgba(0,0,0,1);
     opacity: 1;
     will-change: opacity;
   }
 
-  /* subtle grain to avoid a perfectly flat block look (optional) */
   .grain-overlay {
     position: absolute;
     inset: 0;
@@ -207,5 +245,11 @@
 
   .reveal-btn:active {
     transform: translate(-50%, -50%) scale(0.96);
+  }
+
+  /* Extra CSS fallback for very small screens: increase button and spacing */
+  @media (max-width: 420px) {
+    .canvas-container { height: 320px; } /* slightly taller on very small screens if desired */
+    .reveal-btn { padding: 0.9rem 1.4rem; font-size: 15px; }
   }
 </style>
