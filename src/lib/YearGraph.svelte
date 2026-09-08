@@ -82,24 +82,30 @@
   });
 
   function reveal() {
-    const wrapper = document.getElementById("blur-wrapper");
-    wrapper.classList.add("fade-out");
+    const anim = document.getElementById("anim-layer");
+    const blur = document.getElementById("blur-overlay");
+
+    anim.classList.add("fade-out");
 
     setTimeout(() => {
-      wrapper.style.display = "none";
+      anim.style.display = "none";
+      blur.style.display = "none";
     }, 800);
   }
 </script>
 
 <div class="graph-wrapper">
 
-  <!-- ⭐ Wrapper that will animate -->
-  <div id="blur-wrapper" class="blur-wrapper">
-    <div class="blur-overlay"></div>
-    <button class="reveal-btn" on:click={reveal}>
-      Reveal Song Distribution Graph
-    </button>
-  </div>
+  <!-- ⭐ Blur overlay (static) -->
+  <div id="blur-overlay" class="blur-overlay"></div>
+
+  <!-- ⭐ Dummy animation layer (transparent, animates smoothly) -->
+  <div id="anim-layer" class="anim-layer"></div>
+
+  <!-- ⭐ Button above everything -->
+  <button class="reveal-btn" on:click={reveal}>
+    Reveal Song Distribution Graph
+  </button>
 
   <div class="canvas-container">
     <canvas bind:this={canvas}></canvas>
@@ -129,11 +135,21 @@
     display: block;
   }
 
-  /* ⭐ Wrapper fades (NOT the blur itself) */
-  .blur-wrapper {
+  /* ⭐ Blur overlay (static, not animated) */
+  .blur-overlay {
     position: absolute;
     inset: 0;
     z-index: 20;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(6px);
+  }
+
+  /* ⭐ Dummy animation layer (transparent, animates opacity) */
+  .anim-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    background: rgba(255,255,255,0.001); /* invisible */
     opacity: 1;
     transition: opacity 0.8s ease;
   }
@@ -142,15 +158,7 @@
     opacity: 0;
   }
 
-  /* ⭐ Blur stays intact inside wrapper */
-  .blur-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(6px);
-  }
-
-  /* ⭐ Button above blur */
+  /* ⭐ Button */
   .reveal-btn {
     position: absolute;
     top: 50%;
