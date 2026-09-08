@@ -12,6 +12,7 @@
 
   // Keep a fixed DPR captured at mount so mobile UI changes (address bar hide/show) don't rescale the canvas
   let initialDpr = 1;
+  let lastCssW = 0;
 
   function smooth(values, radius = 4) {
     const out = [];
@@ -33,11 +34,15 @@
     canvasEl.style.height = `${cssHeight}px`;
     const cssW = canvasEl.clientWidth || canvasEl.offsetWidth || 600;
     const cssH = cssHeight;
-    canvasEl.width = Math.round(cssW * initialDpr);
-    canvasEl.height = Math.round(cssH * initialDpr);
-    // keep CSS size stable
-    canvasEl.style.width = `${cssW}px`;
-    canvasEl.style.height = `${cssH}px`;
+    // Only update backing store if width changed meaningfully to avoid re-render jitter
+    if (Math.abs(cssW - lastCssW) > 2) {
+      canvasEl.width = Math.round(cssW * initialDpr);
+      canvasEl.height = Math.round(cssH * initialDpr);
+      // keep CSS size stable
+      canvasEl.style.width = `${cssW}px`;
+      canvasEl.style.height = `${cssH}px`;
+      lastCssW = cssW;
+    }
     return { cssW, cssH, dpr: initialDpr };
   }
 
@@ -83,8 +88,8 @@
           data: smoothed,
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.12)",
-          tension: 0.5,
-          borderWidth: 3,
+          tension: 0.45,
+          borderWidth: 2,     // thinner line
           pointRadius: 0,
           fill: "start"
         }]
@@ -93,7 +98,7 @@
         responsive: false,
         maintainAspectRatio: false,
         animation: false,
-        devicePixelRatio: initialDpr, // FIX: lock DPR used by Chart.js
+        devicePixelRatio: initialDpr, // lock DPR used by Chart.js
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
         layout: { padding: 0 },
         scales: {
@@ -121,7 +126,11 @@
           }
         },
         elements: {
-          line: { borderJoinStyle: "round", borderWidth: 3 } // ensure explicit borderWidth
+          line: {
+            borderJoinStyle: "round",
+            borderCapStyle: "round",
+            borderWidth: 2 // ensure Chart-level default is thin
+          }
         }
       }
     });
@@ -147,8 +156,11 @@
         chartInstance.options.scales.x.ticks.font.size = newTickSize;
         chartInstance.options.scales.x.ticks.maxRotation = newRotation;
         chartInstance.options.scales.x.ticks.minRotation = newRotation;
-        chartInstance.resize();
-        chartInstance.update();
+        // Only trigger a resize/update if width changed meaningfully to avoid jitter when address bar hides/shows
+        if (Math.abs(newCssW - lastCssW) > 2) {
+          chartInstance.resize();
+          chartInstance.update();
+        }
       }
     };
 
@@ -156,10 +168,10 @@
     let scrollTimeout = null;
     const onScroll = () => {
       clearTimeout(scrollTimeout);
-      // defer resize until user stops scrolling for 150ms
+      // defer resize until user stops scrolling for 200ms
       scrollTimeout = setTimeout(() => {
         onResize();
-      }, 150);
+      }, 200);
     };
 
     window.addEventListener("resize", onResize, { passive: true });
