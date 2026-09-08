@@ -28,15 +28,17 @@
 
   function setCanvasCssSize(pxHeight = 300) {
     if (!canvas) return;
-    if (!canvas.style.height) canvas.style.height = `${pxHeight}px`;
+    // Ensure a stable CSS size so snapshot and overlay align
     canvas.style.width = "100%";
+    if (!canvas.style.height) canvas.style.height = `${pxHeight}px`;
   }
 
   onMount(() => {
     if (!data || !Array.isArray(data) || data.length === 0) return;
 
-    setCanvasCssSize(300);
+    setCanvasCssSize(320);
 
+    // Build years and counts
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
     const years = [];
@@ -44,8 +46,9 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = years.map(y => countMap.get(y) || 0);
 
+    // Smooth and compress the plotted values so the curve is visually smaller in Y
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
-    const compressFactor = 0.5;
+    const compressFactor = 0.5; // tune 0.4-0.7 for flatter/steeper
     const smoothed = smoothedRaw.map(v => v * compressFactor);
 
     const rawMax = Math.max(...smoothed, 1);
@@ -53,13 +56,14 @@
 
     // Ensure canvas internal resolution matches CSS size for crisp snapshot
     const cssW = canvas.clientWidth || canvas.offsetWidth || 600;
-    const cssH = canvas.clientHeight || 300;
+    const cssH = canvas.clientHeight || 320;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(cssW * dpr);
     canvas.height = Math.round(cssH * dpr);
     canvas.style.width = `${cssW}px`;
     canvas.style.height = `${cssH}px`;
 
+    // Create Chart.js chart
     chartInstance = new Chart(canvas, {
       type: "line",
       data: {
@@ -116,6 +120,7 @@
           snapImg.style.height = "100%";
           snapImg.style.opacity = "1";
 
+          // Ensure wrapper covers canvas exactly
           snapWrap.style.left = "0";
           snapWrap.style.top = "0";
           snapWrap.style.width = "100%";
@@ -153,26 +158,31 @@
       if (snapWrap) snapWrap.style.display = "none";
       if (snapImg) snapImg.style.display = "none";
       if (revealBtn) revealBtn.style.display = "none";
-    }, 900);
+    }, 920);
   }
 </script>
 
 <!-- SVG filter defs: strong gaussian blur + desaturate + contrast reduction -->
 <svg style="position:absolute; width:0; height:0; pointer-events:none;" aria-hidden="true">
   <defs>
-    <filter id="frostFilter" x="-20%" y="-20%" width="140%" height="140%">
-      <!-- blur -->
-      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blurred"/>
+    <!-- Frost filter: blur then desaturate and slightly reduce contrast.
+         Do NOT blend back with SourceGraphic (that reintroduces detail). -->
+    <filter id="frostFilter" x="-30%" y="-30%" width="160%" height="160%">
+      <!-- strong blur to remove high-frequency detail -->
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="b"/>
       <!-- desaturate -->
-      <feColorMatrix in="blurred" type="saturate" values="0.25" result="desat"/>
-      <!-- reduce contrast slightly -->
-      <feComponentTransfer in="desat" result="contrast">
-        <feFuncR type="linear" slope="0.95" intercept="-0.03"/>
-        <feFuncG type="linear" slope="0.95" intercept="-0.03"/>
-        <feFuncB type="linear" slope="0.95" intercept="-0.03"/>
+      <feColorMatrix in="b" type="saturate" values="0.25" result="s"/>
+      <!-- slightly reduce contrast (compress highlights/shadows) -->
+      <feComponentTransfer in="s" result="c">
+        <feFuncR type="linear" slope="0.92" intercept="-0.03"/>
+        <feFuncG type="linear" slope="0.92" intercept="-0.03"/>
+        <feFuncB type="linear" slope="0.92" intercept="-0.03"/>
       </feComponentTransfer>
-      <!-- subtle edge softening -->
-      <feBlend in="SourceGraphic" in2="contrast" mode="screen" result="blendOut"/>
+      <!-- small additional blur pass to soften edges -->
+      <feGaussianBlur in="c" stdDeviation="2" result="final"/>
+      <feMerge>
+        <feMergeNode in="final"/>
+      </feMerge>
     </filter>
   </defs>
 </svg>
@@ -190,11 +200,11 @@
         style="position:absolute; left:0; top:0;"
       />
 
-      <!-- semi-white wash to mimic frosted glass scattering -->
+      <!-- semi-white wash to mimic frosted glass scattering (normal blend) -->
       <div class="frost-overlay"></div>
 
       <!-- grain/noise overlay to break up shapes and make details unreadable -->
-      <div class="grain-overlay"></div>
+      <div class="grain-overlay" aria-hidden="true"></div>
     </div>
 
     <!-- The actual canvas -->
@@ -220,7 +230,7 @@
     position: relative;
     z-index: 1;
     width: 100%;
-    height: 300px;
+    height: 320px;
     overflow: hidden;
   }
 
@@ -257,14 +267,14 @@
     transition: opacity 0.85s cubic-bezier(.2,.9,.2,1);
   }
 
-  /* A semi-opaque white overlay to create the frosted glass wash (subtle scattering) */
+  /* A semi-opaque white overlay to create the frosted glass wash (normal blend) */
   .frost-overlay {
     position: absolute;
     inset: 0;
     z-index: 22;
-    background: rgba(255,255,255,0.14);
-    mix-blend-mode: screen;
+    background: rgba(255,255,255,0.18); /* subtle wash */
     pointer-events: none;
+    mix-blend-mode: normal;
   }
 
   /* Grain/noise overlay to break up shapes and make details unreadable */
@@ -274,9 +284,9 @@
     z-index: 23;
     pointer-events: none;
     background-image:
-      linear-gradient(transparent 0%, rgba(255,255,255,0.02) 1px),
-      linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.02) 1px);
-    background-size: 3px 3px, 4px 4px;
+      radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
+    background-size: 6px 6px, 8px 8px;
     opacity: 0.55;
     mix-blend-mode: overlay;
     filter: blur(0.6px);
