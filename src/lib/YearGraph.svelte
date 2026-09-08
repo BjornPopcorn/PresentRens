@@ -2,15 +2,18 @@
   import { onMount } from "svelte";
   import Chart from "chart.js/auto";
 
-  // runes mode prop access
-  const { data, overlayColor = "rgba(0,0,0,1)" } = $props();
+  // Runes mode prop access
+  // data: [{ year, count }]
+  // overlayMode: "solid" | "gradient"
+  // overlayColor: CSS color for solid mode (default opaque)
+  // overlayGradient: CSS gradient string for gradient mode (default purple-ish)
+  const { data, overlayMode = "gradient", overlayColor = "rgba(0,0,0,1)", overlayGradient = "linear-gradient(180deg,#6b21a8 0%, #7c3aed 50%, #4c1d95 100%)" } = $props();
 
   let canvasEl;
   let overlayDiv;
   let revealBtn;
   let chartInstance;
 
-  // Simple moving-average smoother
   function smooth(values, radius = 4) {
     const out = [];
     for (let i = 0; i < values.length; i++) {
@@ -24,7 +27,6 @@
     return out;
   }
 
-  // Ensure canvas CSS/internal sizing matches so overlay aligns exactly
   function setCanvasSize(cssHeight = 360) {
     if (!canvasEl) return;
     canvasEl.style.width = "100%";
@@ -84,15 +86,13 @@
           x: { ticks: { color: "#fff", font: { size: 12 } }, grid: { color: "rgba(255,255,255,0.12)" } },
           y: { ticks: { display: false }, grid: { color: "rgba(255,255,255,0.08)" }, suggestedMax, suggestedMin: 0 }
         },
-        elements: {
-          line: { borderJoinStyle: "round" }
-        }
+        elements: { line: { borderJoinStyle: "round" } }
       }
     });
 
-    // Ensure overlay color is fully opaque and covers the chart completely
+    // Apply overlay style (fully opaque block)
     if (overlayDiv) {
-      overlayDiv.style.background = overlayColor;
+      overlayDiv.style.background = overlayMode === "gradient" ? overlayGradient : overlayColor;
       overlayDiv.style.left = "0";
       overlayDiv.style.top = "0";
       overlayDiv.style.width = "100%";
@@ -127,7 +127,7 @@
     <!-- Chart.js canvas (source). Keep canvas background transparent so page background shows through when overlay removed -->
     <canvas bind:this={canvasEl} class="chart-canvas"></canvas>
 
-    <!-- optional grain on top of the block to avoid a perfectly flat look -->
+    <!-- optional grain on top of the block to keep it visually pleasing -->
     <div class="grain-overlay" aria-hidden="true"></div>
   </div>
 
@@ -149,8 +149,7 @@
     width: 100%;
     height: 360px;
     overflow: hidden;
-    /* page background visible behind canvas; keep this as your page background */
-    background: linear-gradient(180deg, #0b1220 0%, #0f1724 100%);
+    background: transparent; /* keep page background visible behind canvas */
   }
 
   .chart-canvas {
@@ -175,7 +174,7 @@
     will-change: opacity;
   }
 
-  /* subtle grain to avoid a flat solid block look (optional) */
+  /* subtle grain to avoid a perfectly flat block look (optional) */
   .grain-overlay {
     position: absolute;
     inset: 0;
