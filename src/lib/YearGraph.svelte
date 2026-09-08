@@ -11,11 +11,11 @@
   let chartInstance;
 
   // Tuning: smaller downsample => stronger diffusion; blur radius controls shader kernel
-  const DOWNSAMPLE_FACTOR = 0.08; // 8% of original -> very aggressive downscale for frosted look
-  const BLUR_RADIUS = 12.0;       // blur radius in pixels (applied after downsample)
-  const DOWNSAMPLE_MAX = 512;     // clamp downsample size for performance
+  const DOWNSAMPLE_FACTOR = 0.08; // 8% of original -> aggressive downsample
+  const BLUR_RADIUS = 14.0;       // blur radius in pixels (tune 12-18)
+  const DOWNSAMPLE_MAX = 1024;    // clamp downsample size for performance
 
-  // Utility: compile shader
+  // ---------- WebGL helpers ----------
   function compileShader(gl, type, src) {
     const s = gl.createShader(type);
     gl.shaderSource(s, src);
@@ -28,7 +28,6 @@
     return s;
   }
 
-  // Utility: link program
   function createProgram(gl, vsSrc, fsSrc) {
     const vs = compileShader(gl, gl.VERTEX_SHADER, vsSrc);
     const fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSrc);
@@ -44,7 +43,6 @@
     return prog;
   }
 
-  // Fullscreen quad vertex shader (same for both passes)
   const VERTEX_SRC = `
     attribute vec2 a_pos;
     attribute vec2 a_uv;
@@ -55,19 +53,15 @@
     }
   `;
 
-  // Fragment shader for a single separable blur pass.
-  // direction: (1.0, 0.0) horizontal or (0.0, 1.0) vertical
-  // We use a fixed 9-tap kernel with linear sampling offsets for performance.
+  // Separable blur fragment shader (9-tap)
   const FRAGMENT_BLUR_SRC = `
     precision mediump float;
     varying vec2 v_uv;
     uniform sampler2D u_texture;
-    uniform vec2 u_texelSize; // 1/textureSize
-    uniform vec2 u_direction; // blur direction
-    uniform float u_radius;   // blur radius in pixels (for weight scaling)
+    uniform vec2 u_texelSize;
+    uniform vec2 u_direction;
+    uniform float u_radius;
 
-    // Precomputed weights for 9 taps (center + 4 pairs)
-    // These are normalized gaussian-like weights; you can tweak if needed.
     float w0 = 0.2270270270;
     float w1 = 0.1945945946;
     float w2 = 0.1216216216;
@@ -85,55 +79,24 @@
       color += texture2D(u_texture, v_uv - step * 3.0) * w3;
       color += texture2D(u_texture, v_uv + step * 4.0) * w4;
       color += texture2D(u_texture, v_uv - step * 4.0) * w4;
-      // Slight desaturate + contrast compression to reduce edge pop
+
+      // desaturate + slight contrast/brightness tweak
       float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
       vec3 desat = mix(color.rgb, vec3(gray), 0.35);
-      desat = desat * 0.95 + 0.02; // slight brightness/contrast tweak
+      desat = desat * 0.95 + 0.02;
       gl_FragColor = vec4(desat, color.a);
     }
   `;
 
-  // Create a texture from a source canvas
-  function createTextureFromCanvas(gl, canvas) {
-    const tex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
-    gl.bindTexture(gl.TEXTURE_2D, null);
-    return tex;
-  }
+  // GL resources
+  let gl = null;
+  let blurProgram = null;
+  let quadVBO = null;
+  let texSmall = null;   // downsampled texture
+  let texTemp = null;    // intermediate texture (screen-sized)
+  let fbSmall = null;
+  let fbTemp = null;
 
-  // Create an empty texture for framebuffer rendering
-  function createEmptyTexture(gl, w, h) {
-    const tex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    gl.bindTexture(gl.TEXTURE_2D, null);
-    return tex;
-  }
-
-  // Create framebuffer attached to a texture
-  function createFramebuffer(gl, tex) {
-    const fb = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-    if (status !== gl.FRAMEBUFFER_COMPLETE) {
-      throw new Error("Framebuffer incomplete: " + status);
-    }
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    return fb;
-  }
-
-  // Draw a fullscreen quad (setup once)
   function setupQuad(gl, program) {
     const posLoc = gl.getAttribLocation(program, "a_pos");
     const uvLoc = gl.getAttribLocation(program, "a_uv");
@@ -156,34 +119,57 @@
     return vbo;
   }
 
-  // Main WebGL pipeline: takes chartCanvas as source, renders blurred result to glCanvas
-  let gl, blurProgram, quadVBO, texSource, texTemp, fbTemp, fbOut;
+  function createEmptyTexture(gl, w, h) {
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    return tex;
+  }
+
+  function createFramebuffer(gl, tex) {
+    const fb = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (status !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error("Framebuffer incomplete: " + status);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return fb;
+  }
 
   function initWebGL() {
-    gl = glCanvas.getContext("webgl", { antialias: false, preserveDrawingBuffer: false });
+    // create context with alpha and no premultiplied alpha so canvas composites transparently
+    gl = glCanvas.getContext("webgl", { alpha: true, premultipliedAlpha: false, antialias: false });
     if (!gl) throw new Error("WebGL not supported");
+    gl.clearColor(0, 0, 0, 0);
 
     blurProgram = createProgram(gl, VERTEX_SRC, FRAGMENT_BLUR_SRC);
     gl.useProgram(blurProgram);
     quadVBO = setupQuad(gl, blurProgram);
 
-    // uniforms locations
+    // uniform locations
     blurProgram.u_texture = gl.getUniformLocation(blurProgram, "u_texture");
     blurProgram.u_texelSize = gl.getUniformLocation(blurProgram, "u_texelSize");
     blurProgram.u_direction = gl.getUniformLocation(blurProgram, "u_direction");
     blurProgram.u_radius = gl.getUniformLocation(blurProgram, "u_radius");
   }
 
-  // Resize both canvases and recreate textures/framebuffers
+  // Resize and prepare textures/framebuffers
   function resizeAndPrepare() {
     if (!chartCanvas || !glCanvas || !gl) return;
 
-    // match CSS size and DPR
     const cssW = chartCanvas.clientWidth || chartCanvas.offsetWidth || 600;
     const cssH = chartCanvas.clientHeight || chartCanvas.offsetHeight || 320;
     const dpr = window.devicePixelRatio || 1;
 
-    // chartCanvas internal size already set by Chart code; ensure glCanvas matches CSS pixels
+    // ensure chart canvas internal size is set by Chart code; glCanvas should match CSS size
     glCanvas.style.width = `${cssW}px`;
     glCanvas.style.height = `${cssH}px`;
     glCanvas.width = Math.round(cssW * dpr);
@@ -194,112 +180,112 @@
     const dsW = Math.max(1, Math.min(DOWNSAMPLE_MAX, Math.round(glCanvas.width * DOWNSAMPLE_FACTOR)));
     const dsH = Math.max(1, Math.min(DOWNSAMPLE_MAX, Math.round(glCanvas.height * DOWNSAMPLE_FACTOR)));
 
-    // create textures and framebuffers
-    if (texSource) gl.deleteTexture(texSource);
-    if (texTemp) gl.deleteTexture(texTemp);
-    if (fbTemp) gl.deleteFramebuffer(fbTemp);
-    if (fbOut) gl.deleteFramebuffer(fbOut);
+    // cleanup old
+    if (texSmall) { gl.deleteTexture(texSmall); texSmall = null; }
+    if (texTemp) { gl.deleteTexture(texTemp); texTemp = null; }
+    if (fbSmall) { gl.deleteFramebuffer(fbSmall); fbSmall = null; }
+    if (fbTemp) { gl.deleteFramebuffer(fbTemp); fbTemp = null; }
 
-    // source texture will be created from chartCanvas each frame (texSource placeholder)
-    texTemp = createEmptyTexture(gl, dsW, dsH);
+    // small texture (downsampled)
+    texSmall = createEmptyTexture(gl, dsW, dsH);
+    fbSmall = createFramebuffer(gl, texSmall);
+
+    // temp texture at screen size (we render upscaled blurred result here)
+    texTemp = createEmptyTexture(gl, glCanvas.width, glCanvas.height);
     fbTemp = createFramebuffer(gl, texTemp);
-
-    // output texture at screen size
-    texSource = createEmptyTexture(gl, glCanvas.width, glCanvas.height);
-    fbOut = createFramebuffer(gl, texSource);
   }
 
-  // Upload chartCanvas into a temporary downsampled texture using a 2D canvas (fast path)
+  // Upload downsampled chart into texSmall using 2D offscreen canvas (browser resampling)
   function uploadDownsampledTexture() {
-    // create offscreen canvas sized to downsample target
     const dsW = Math.max(1, Math.min(DOWNSAMPLE_MAX, Math.round(glCanvas.width * DOWNSAMPLE_FACTOR)));
     const dsH = Math.max(1, Math.min(DOWNSAMPLE_MAX, Math.round(glCanvas.height * DOWNSAMPLE_FACTOR)));
     const off = document.createElement("canvas");
     off.width = dsW;
     off.height = dsH;
     const ctx = off.getContext("2d");
-    // draw chartCanvas into small canvas (browser resampling removes high-frequency detail)
+    // draw chartCanvas into small canvas (use internal pixel buffer for crispness)
     ctx.drawImage(chartCanvas, 0, 0, chartCanvas.width, chartCanvas.height, 0, 0, dsW, dsH);
 
-    // upload to texTemp (which is dsW x dsH)
-    gl.bindTexture(gl.TEXTURE_2D, texTemp);
+    gl.bindTexture(gl.TEXTURE_2D, texSmall);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, off);
     gl.bindTexture(gl.TEXTURE_2D, null);
   }
 
-  // Two-pass blur: horizontal then vertical. We render to full-screen target (fbOut) at screen resolution.
+  // Two-pass separable blur: sample texSmall (downsampled) and render to fbTemp (screen-sized), then final pass to screen
   function runBlurPasses() {
-    // First pass: sample texTemp (downsampled) and render to an intermediate texture at screen size using horizontal blur
     gl.useProgram(blurProgram);
-
-    // Bind attributes (quadVBO already bound in setupQuad)
     gl.bindBuffer(gl.ARRAY_BUFFER, quadVBO);
 
-    // PASS 1: horizontal blur - render to fbOut (screen-sized texture)
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbOut);
+    // PASS 1: horizontal blur - sample texSmall, render to fbTemp (screen-sized)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbTemp);
     gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+    gl.clearColor(0,0,0,0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // Bind the small texture as source (texTemp)
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texSmall);
+    gl.uniform1i(blurProgram.u_texture, 0);
+
+    // texelSize is 1 / size of the texture we sample (texSmall)
+    const dsW = Math.max(1, Math.min(DOWNSAMPLE_MAX, Math.round(glCanvas.width * DOWNSAMPLE_FACTOR)));
+    const dsH = Math.max(1, Math.min(DOWNSAMPLE_MAX, Math.round(glCanvas.height * DOWNSAMPLE_FACTOR)));
+    gl.uniform2f(blurProgram.u_texelSize, 1.0 / dsW, 1.0 / dsH);
+
+    // horizontal
+    gl.uniform2f(blurProgram.u_direction, 1.0, 0.0);
+    // scale radius relative to downsampled texel density so blur covers intended visual radius
+    const radiusForSmall = Math.max(1.0, BLUR_RADIUS * (dsW / glCanvas.width));
+    gl.uniform1f(blurProgram.u_radius, radiusForSmall);
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    // PASS 2: vertical blur - sample texTemp (which now contains horizontally blurred upscaled result), render to default framebuffer (screen)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+    gl.clearColor(0,0,0,0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texTemp);
     gl.uniform1i(blurProgram.u_texture, 0);
 
-    // texelSize should be 1 / sourceTextureSize (we sample from texTemp)
-    const dsW = Math.max(1, Math.min(DOWNSAMPLE_MAX, Math.round(glCanvas.width * DOWNSAMPLE_FACTOR)));
-    const dsH = Math.max(1, Math.min(DOWNSAMPLE_MAX, Math.round(glCanvas.height * DOWNSAMPLE_FACTOR)));
-    gl.uniform2f(blurProgram.u_texelSize, 1.0 / dsW, 1.0 / dsH);
-    gl.uniform2f(blurProgram.u_direction, 1.0, 0.0);
-    gl.uniform1f(blurProgram.u_radius, BLUR_RADIUS);
-
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-    // PASS 2: vertical blur - sample from fbOut (which currently holds horizontally blurred upscaled result)
-    // To do this, we need to bind the texture we just rendered (texSource) and render to the default framebuffer (screen)
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, glCanvas.width, glCanvas.height);
-
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texSource);
-    gl.uniform1i(blurProgram.u_texture, 0);
-
-    // texelSize now corresponds to texSource size (screen)
+    // texelSize for screen-sized texture
     gl.uniform2f(blurProgram.u_texelSize, 1.0 / glCanvas.width, 1.0 / glCanvas.height);
     gl.uniform2f(blurProgram.u_direction, 0.0, 1.0);
     gl.uniform1f(blurProgram.u_radius, BLUR_RADIUS);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-    // Unbind
     gl.bindTexture(gl.TEXTURE_2D, null);
   }
 
-  // Render loop: update texture from chart and run blur
-  let rafId = null;
+  // Render once (upload + blur)
   function renderOnce() {
     if (!gl) return;
     try {
-      // Upload downsampled chart into texTemp
       uploadDownsampledTexture();
-
-      // Run blur passes (horizontal then vertical)
       runBlurPasses();
     } catch (e) {
       console.warn("WebGL render error:", e);
     }
   }
 
-  // Public: call when chart updates
+  // Public refresh
   function refreshBlur() {
-    // ensure sizes are correct
-    resizeAndPrepare();
-    renderOnce();
+    try {
+      resizeAndPrepare();
+      renderOnce();
+    } catch (e) {
+      console.warn("refreshBlur failed:", e);
+    }
   }
 
-  // Build Chart and WebGL on mount
+  // ---------- Chart + lifecycle ----------
   onMount(() => {
     if (!data || !Array.isArray(data) || data.length === 0) return;
 
-    // Build chart (ensure canvas internal size matches CSS and DPR)
+    // Ensure chart canvas CSS size and internal DPR sizing
     const cssW = chartCanvas.clientWidth || chartCanvas.offsetWidth || 600;
     const cssH = chartCanvas.clientHeight || chartCanvas.offsetHeight || 320;
     const dpr = window.devicePixelRatio || 1;
@@ -317,7 +303,7 @@
     const counts = years.map(y => countMap.get(y) || 0);
 
     // smoothing
-    function smooth(values, radius = 4) {
+    function smoothArr(values, radius = 4) {
       const out = [];
       for (let i = 0; i < values.length; i++) {
         let sum = 0, cnt = 0;
@@ -332,7 +318,7 @@
       }
       return out;
     }
-    const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
+    const smoothedRaw = smoothArr(counts, 4).map(v => Math.max(0, v));
     const compressFactor = 0.5;
     const smoothed = smoothedRaw.map(v => v * compressFactor);
     const rawMax = Math.max(...smoothed, 1);
@@ -369,16 +355,14 @@
     try {
       initWebGL();
       resizeAndPrepare();
-      // initial render
       refreshBlur();
     } catch (e) {
       console.error("WebGL init failed:", e);
+      // fallback: do nothing (chart still visible); you can implement CPU fallback if desired
     }
 
-    // If chart data may change later, observe and refresh blur
-    // Simple approach: refresh on window resize and when Chart updates
+    // Resize handler and chart update hook
     const onResize = () => {
-      // update chart internal size to match CSS
       const cssW2 = chartCanvas.clientWidth || chartCanvas.offsetWidth || 600;
       const cssH2 = chartCanvas.clientHeight || chartCanvas.offsetHeight || 320;
       const dpr2 = window.devicePixelRatio || 1;
@@ -392,7 +376,7 @@
     };
     window.addEventListener("resize", onResize);
 
-    // Hook Chart update: whenever chart is updated, refresh blur
+    // Hook Chart update to refresh blur
     const originalUpdate = chartInstance.update.bind(chartInstance);
     chartInstance.update = function(...args) {
       const res = originalUpdate(...args);
@@ -403,20 +387,19 @@
     onDestroy(() => {
       window.removeEventListener("resize", onResize);
       if (chartInstance) chartInstance.destroy();
-      if (rafId) cancelAnimationFrame(rafId);
       // cleanup GL resources
       try {
         if (gl) {
-          if (texSource) gl.deleteTexture(texSource);
+          if (texSmall) gl.deleteTexture(texSmall);
           if (texTemp) gl.deleteTexture(texTemp);
+          if (fbSmall) gl.deleteFramebuffer(fbSmall);
           if (fbTemp) gl.deleteFramebuffer(fbTemp);
-          if (fbOut) gl.deleteFramebuffer(fbOut);
         }
       } catch (e) {}
     });
   });
 
-  // Reveal button fades out the overlay (glCanvas is on top; we animate its opacity)
+  // Reveal: fade out the GL canvas overlay
   function reveal() {
     if (!glCanvas || !revealBtn) return;
     glCanvas.style.transition = "opacity 0.9s cubic-bezier(.2,.9,.2,1)";
@@ -441,7 +424,7 @@
     <!-- WebGL canvas overlay (renders blurred result) -->
     <canvas bind:this={glCanvas} class="gl-canvas" style="position:absolute; left:0; top:0; width:100%; height:100%; z-index:20;"></canvas>
 
-    <!-- subtle grain overlay on top of GL result (optional) -->
+    <!-- subtle grain overlay on top of GL result -->
     <div class="grain-overlay" aria-hidden="true"></div>
   </div>
 
@@ -454,7 +437,7 @@
   .graph-wrapper {
     position: relative;
     width: 100%;
-    max-width: 800px;
+    max-width: 900px;
     margin: 2rem auto;
     min-height: 360px;
   }
@@ -475,6 +458,7 @@
     height: 100%;
     z-index: 10;
     display: block;
+    background: transparent;
   }
 
   .gl-canvas {
@@ -482,6 +466,7 @@
     opacity: 1;
     will-change: opacity;
     image-rendering: auto;
+    background: transparent;
   }
 
   .grain-overlay {
