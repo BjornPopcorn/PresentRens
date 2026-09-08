@@ -74,7 +74,7 @@
             ticks: { display: false },
             grid: { color: "rgba(255,255,255,0.10)" },
 
-            // ⭐ flatten graph (tune this number if needed)
+            // ⭐ flatten graph
             suggestedMax: 10,
             suggestedMin: 0
           }
@@ -95,10 +95,10 @@
 
 <div class="graph-wrapper">
 
-  <!-- ⭐ Blur overlay (button is now OUTSIDE so animation works) -->
+  <!-- ⭐ Blur overlay -->
   <div id="graph-blur-overlay" class="blur-overlay"></div>
 
-  <!-- ⭐ Button sits above blur overlay -->
+  <!-- ⭐ Button above blur -->
   <button class="reveal-btn" on:click={reveal}>
     Reveal Song Distribution Graph
   </button>
@@ -106,9 +106,11 @@
   <div class="canvas-container">
     <canvas bind:this={canvas}></canvas>
   </div>
+</div>
 
-  <!-- ⭐ Animation test box -->
-  <div class="test-box"></div>
+<!-- ⭐ Animation test box OUTSIDE the graph wrapper -->
+<div class="test-box">
+  Hover me to test animation
 </div>
 
 <style>
@@ -131,24 +133,24 @@
     display: block;
   }
 
-  /* ⭐ Softer blur + visible graph outline */
+  /* ⭐ Softer blur */
   .blur-overlay {
     position: absolute;
     inset: 0;
     z-index: 20;
 
-    background: rgba(255,255,255,0.05); /* lighter */
-    backdrop-filter: blur(6px);         /* softer */
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(6px);
 
     opacity: 1;
-    transition: opacity 0.8s ease;      /* ⭐ real fade animation */
+    transition: opacity 0.8s ease;
   }
 
   .fade-out {
     opacity: 0;
   }
 
-  /* ⭐ Button above blur */
+  /* ⭐ Button */
   .reveal-btn {
     position: absolute;
     top: 50%;
@@ -167,7 +169,6 @@
     transition: transform 0.2s ease, opacity 0.2s ease;
   }
 
-  /* ⭐ Subtle click animation */
   .reveal-btn:active {
     transform: translate(-50%, -50%) scale(0.96);
     opacity: 0.85;
@@ -175,12 +176,16 @@
 
   /* ⭐ Animation test box */
   .test-box {
-    width: 80px;
-    height: 80px;
+    width: 140px;
+    padding: 1rem;
+    margin: 1rem auto;
     background: red;
+    color: white;
+    text-align: center;
+    border-radius: 8px;
+
     opacity: 1;
     transition: opacity 2s ease;
-    margin-top: 1rem;
   }
 
   .test-box:hover {
