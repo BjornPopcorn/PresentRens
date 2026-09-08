@@ -26,25 +26,23 @@
   }
 
   // Create a downscaled snapshot dataURL from the visible canvas.
-  // scaleFactor: 0.2 => draw at 20% size (removes high-frequency detail)
-  function createDownscaledDataUrl(srcCanvas, scaleFactor = 0.18) {
+  // scaleFactor: 0.12 => draw at 12% size (removes high-frequency detail)
+  function createDownscaledDataUrl(srcCanvas, scaleFactor = 0.12) {
     try {
       const srcW = srcCanvas.width;
       const srcH = srcCanvas.height;
       const dstW = Math.max(1, Math.round(srcW * scaleFactor));
       const dstH = Math.max(1, Math.round(srcH * scaleFactor));
 
-      // small offscreen canvas
       const off = document.createElement("canvas");
       off.width = dstW;
       off.height = dstH;
       const ctx = off.getContext("2d");
 
-      // draw scaled down (browser will resample)
+      // draw scaled down (browser resamples)
       ctx.drawImage(srcCanvas, 0, 0, srcW, srcH, 0, 0, dstW, dstH);
 
-      // optional: draw again scaled up slightly to soften aliasing (not necessary)
-      // then export a PNG data URL
+      // export PNG data URL
       return off.toDataURL("image/png");
     } catch (e) {
       console.warn("Downscale snapshot failed", e);
@@ -134,7 +132,7 @@
     setTimeout(() => {
       try {
         // Create a downscaled data URL to remove high-frequency detail
-        const downscaled = createDownscaledDataUrl(canvas, 0.18); // 18% size
+        const downscaled = createDownscaledDataUrl(canvas, 0.12); // 12% size for strong diffusion
         if (downscaled && blurImg) {
           blurImg.src = downscaled;
           blurImg.style.display = "block";
@@ -146,6 +144,9 @@
           blurImg.style.height = "100%";
           blurImg.style.opacity = "1";
 
+          // Ensure smooth resampling (avoid pixelated rendering)
+          blurImg.style.imageRendering = "auto";
+
           // Force layout so transitions start from the correct state
           // eslint-disable-next-line no-unused-expressions
           blurImg.offsetHeight;
@@ -154,7 +155,7 @@
         console.warn("Snapshot failed:", e);
         if (blurImg) blurImg.style.display = "none";
       }
-    }, 140);
+    }, 160);
   });
 
   function reveal() {
@@ -174,7 +175,7 @@
     setTimeout(() => {
       if (blurImg) blurImg.style.display = "none";
       if (revealBtn) revealBtn.style.display = "none";
-    }, 900);
+    }, 920);
   }
 </script>
 
@@ -228,7 +229,7 @@
   /* The downscaled snapshot image (base for the frosted effect) */
   .blur-image {
     z-index: 20;
-    object-fit: cover;
+    object-fit: fill; /* match canvas pixel mapping exactly */
     width: 100%;
     height: 100%;
     display: block;
@@ -236,18 +237,19 @@
     left: 0;
     top: 0;
 
-    /* key: blur + upscale look */
-    /* blur radius tuned to hide thin lines after downscaling */
-    filter: blur(10px) saturate(0.85) contrast(0.9) brightness(0.9);
+    /* key: upscale blurred look (downscaled source + blur) */
+    filter: blur(12px) saturate(0.85) contrast(0.92) brightness(0.92);
 
-    /* subtle overlay to wash out remaining contrast without tinting */
-    background: rgba(255,255,255,0.06);
+    /* minimal wash only; rely on blur to obscure detail */
+    background: rgba(255,255,255,0.02);
 
     /* animate opacity */
     transition: opacity 0.85s cubic-bezier(.2,.9,.2,1);
     opacity: 1;
     pointer-events: none;
     will-change: opacity;
+    image-rendering: auto;
+    transform: translateZ(0); /* promote to its own layer for smooth opacity animation */
   }
 
   /* Reveal button above everything */
