@@ -8,7 +8,6 @@
   let revealBtn;
   let chartInstance;
 
-  // smoothing helper (same as before)
   function smooth(values, radius = 4) {
     const result = [];
     for (let i = 0; i < values.length; i++) {
@@ -26,11 +25,17 @@
     return result;
   }
 
+  function setCanvasCssSize(pxHeight = 300) {
+    // Ensure canvas has a stable CSS size so snapshot and overlay align
+    if (!canvas) return;
+    if (!canvas.style.height) canvas.style.height = `${pxHeight}px`;
+    canvas.style.width = "100%";
+  }
+
   onMount(() => {
     if (!data || !Array.isArray(data) || data.length === 0) return;
 
-    // Ensure canvas CSS height exists so layout is stable
-    if (!canvas.style.height) canvas.style.height = "300px";
+    setCanvasCssSize(300);
 
     // Build years and counts
     const minYear = Math.min(...data.map(d => d.year));
@@ -40,17 +45,23 @@
     const countMap = new Map(data.map(d => [d.year, d.count]));
     const counts = years.map(y => countMap.get(y) || 0);
 
-    // Smooth and clamp
+    // Smooth and compress the plotted values so the curve is visually flatter
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
-
-    // Visual compression: scale the plotted values down so the whole curve is "flatter"
-    // This reduces amplitude without adding empty space.
-    const compressFactor = 0.55; // tune between 0.4 (very flat) and 0.8 (subtle)
+    const compressFactor = 0.5; // stronger compression; tune 0.4-0.7
     const smoothed = smoothedRaw.map(v => v * compressFactor);
 
-    // Compute suggestedMax to match the visual scale (keeps graph compact)
+    // suggestedMax based on compressed values so the chart doesn't add extra empty space
     const rawMax = Math.max(...smoothed, 1);
     const suggestedMax = Math.ceil(rawMax * 1.05);
+
+    // Ensure canvas internal resolution matches CSS size for crisp snapshot
+    const cssW = canvas.clientWidth || canvas.offsetWidth || 600;
+    const cssH = canvas.clientHeight || 300;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    canvas.style.width = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
 
     // Create Chart.js chart
     chartInstance = new Chart(canvas, {
@@ -82,11 +93,11 @@
               color: "#ffffff",
               font: { size: 12 }
             },
-            grid: { color: "rgba(255,255,255,0.15)" }
+            grid: { color: "rgba(255,255,255,0.12)" }
           },
           y: {
             ticks: { display: false },
-            grid: { color: "rgba(255,255,255,0.10)" },
+            grid: { color: "rgba(255,255,255,0.08)" },
             suggestedMax,
             suggestedMin: 0
           }
@@ -95,24 +106,20 @@
     });
 
     // Snapshot after Chart paints. Slight delay ensures rendering finished.
-    // Use a short delay and then create a dataURL from the canvas.
     setTimeout(() => {
       try {
-        // Ensure the canvas internal resolution is stable for crisp snapshot
-        // (Chart.js already draws; toDataURL will capture what was drawn)
         const dataUrl = canvas.toDataURL("image/png");
         if (blurImg) {
           blurImg.src = dataUrl;
           blurImg.style.display = "block";
-          // Make sure the snapshot covers the canvas exactly
+          // Align the snapshot exactly to the canvas container
           blurImg.style.left = "0";
           blurImg.style.top = "0";
           blurImg.style.width = "100%";
           blurImg.style.height = "100%";
           blurImg.style.opacity = "1";
           blurImg.classList.remove("fade-out");
-          // Force a layout so subsequent opacity transitions are honored
-          // (helps ensure the browser recognizes the starting opacity)
+          // Force layout so the browser registers the starting opacity
           // eslint-disable-next-line no-unused-expressions
           blurImg.offsetHeight;
         }
@@ -126,23 +133,21 @@
   function reveal() {
     if (!blurImg || !revealBtn) return;
 
-    // Ensure transition is set (defensive)
-    blurImg.style.transition = "opacity 0.8s cubic-bezier(.2,.9,.2,1)";
-    // Force layout then start fade (use requestAnimationFrame to ensure browser applies starting state)
+    // Defensive: ensure transition is present
+    blurImg.style.transition = "opacity 0.85s cubic-bezier(.2,.9,.2,1)";
+    // Use RAF to ensure starting state applied, then start fade
     requestAnimationFrame(() => {
-      // start fade
       blurImg.style.opacity = "0";
-      // fade the button slightly and then hide it
       revealBtn.style.transition = "opacity 0.28s ease";
       revealBtn.style.opacity = "0";
       revealBtn.style.pointerEvents = "none";
     });
 
-    // After animation completes, remove elements so the canvas is fully visible and interactive
+    // Remove elements after animation completes
     setTimeout(() => {
       if (blurImg) blurImg.style.display = "none";
       if (revealBtn) revealBtn.style.display = "none";
-    }, 820);
+    }, 880);
   }
 </script>
 
@@ -193,17 +198,17 @@
     z-index: 1;
   }
 
-  /* Snapshot image sits exactly over the canvas */
+  /* Stronger blur + darken so underlying details are obscured */
   .blur-image {
     z-index: 20;
     object-fit: cover;
-    /* stronger blur + darken overlay so underlying details are obscured */
-    filter: blur(14px) saturate(0.9) brightness(0.85);
-    transition: opacity 0.8s cubic-bezier(.2,.9,.2,1);
+    /* Strong blur and darken to make graph hard to read */
+    filter: blur(18px) brightness(0.45) saturate(0.9);
+    transition: opacity 0.85s cubic-bezier(.2,.9,.2,1);
     opacity: 1;
     pointer-events: none;
     will-change: opacity;
-    background: rgba(0,0,0,0.18); /* subtle darkening to hide details further */
+    background: rgba(0,0,0,0.18);
   }
 
   .blur-image.fade-out {
