@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from "svelte";
   import Chart from "chart.js/auto";
 
-  // runes mode prop access
+  // Props
   const { data, overlayMode = "gradient", overlayColor = "rgba(0,0,0,1)", overlayGradient = "linear-gradient(180deg,#6b21a8 0%, #7c3aed 50%, #4c1d95 100%)" } = $props();
 
   let canvasEl;
@@ -10,7 +10,7 @@
   let revealBtn;
   let chartInstance;
 
-  // Lock DPR at mount to avoid mobile jitter
+  // Lock DPR at mount to avoid mobile address-bar jitter changing stroke thickness
   let initialDpr = 1;
   let lastCssW = 0;
 
@@ -48,13 +48,13 @@
   onMount(() => {
     if (!Array.isArray(data) || data.length === 0) return;
 
-    // Capture DPR once at mount and use it for all canvas sizing and Chart rendering.
+    // capture DPR once
     initialDpr = Math.max(1, window.devicePixelRatio || 1);
 
-    // compressed height (tighter vertical)
+    // compressed height
     const { cssW } = setCanvasSize(240);
 
-    // Prepare data
+    // Prepare years + counts
     const minYear = Math.min(...data.map(d => d.year));
     const maxYear = Math.max(...data.map(d => d.year));
     const years = [];
@@ -66,38 +66,42 @@
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
     const compressFactor = 0.5;
 
-    // small negative baseline to lift the curve slightly before forcing placement
-    // keep baseline modest so we can control final placement via axis bounds
+    // baselineOffset: small value to avoid hugging zero; adjust if you want the whole curve higher/lower
     const baselineOffset = -1.2;
     const smoothed = smoothedRaw.map(v => v * compressFactor + baselineOffset);
 
-    // Compute Y bounds so the data occupies ~70% of vertical space and sits lower
+    // --- KEY: compute explicit y.min / y.max so Chart.js does NOT auto-scale ---
+    // We want the plotted data to occupy roughly 70% of the chart height and sit lower.
     const dataMin = Math.min(...smoothed);
     const dataMax = Math.max(...smoothed);
-    const visibleFraction = 0.7; // target fraction of chart height occupied by data
     const dataRange = Math.max(1e-6, dataMax - dataMin);
 
-    // PUSH_FACTOR >1 pushes the curve lower (more empty space below)
-    const PUSH_FACTOR = 1.4;
+    // visibleFraction controls how much vertical space the data occupies.
+    // Smaller fraction -> more empty space below -> curve sits lower.
+    // Set to 0.7 for ~70% occupied; reduce to 0.6 or 0.55 to push it lower.
+    const visibleFraction = 0.7;
 
-    // extra space below the data to make the curve sit lower
-    const extraBelow = dataRange * ((1 - visibleFraction) / visibleFraction) * PUSH_FACTOR;
+    // pushFactor lets us nudge the curve further down without changing data values.
+    const pushFactor = 1.2;
 
-    // keep top tight (small headroom) so curve visually sits lower
-    const topHeadroom = dataRange * 0.02;
+    // compute extra space below so the curve sits lower
+    const extraBelow = dataRange * ((1 - visibleFraction) / visibleFraction) * pushFactor;
+
+    // small headroom above the data so top doesn't feel cramped
+    const topHeadroom = dataRange * 0.03;
 
     const yMin = dataMin - extraBelow;
     const yMax = dataMax + topHeadroom;
 
-    // Round bounds to sensible numbers for Chart.js
-    const suggestedMin = Math.floor(yMin);
-    const suggestedMax = Math.ceil(yMax);
+    // Round bounds to sensible numbers
+    const lockedMin = Math.floor(yMin);
+    const lockedMax = Math.ceil(yMax);
 
     // responsive tick font size and rotation
     const tickFontSize = cssW <= 420 ? 14 : 12;
     const tickRotation = cssW <= 420 ? 45 : 0;
 
-    // Build Chart.js with locked DPR and explicit y.min/y.max to prevent auto-scaling
+    // Build Chart.js with locked DPR and explicit y.min/y.max
     chartInstance = new Chart(canvasEl, {
       type: "line",
       data: {
@@ -108,7 +112,7 @@
           borderColor: "white",
           backgroundColor: "rgba(255,255,255,0.12)",
           tension: 0.45,
-          borderWidth: 1.6, // thin stroke for readability
+          borderWidth: 1.6,
           pointRadius: 0,
           fill: "start"
         }]
@@ -138,9 +142,9 @@
             grid: { color: "rgba(255,255,255,0.12)" }
           },
           y: {
-            // lock min/max so Chart.js does not auto-adjust and the curve sits lower
-            min: suggestedMin,
-            max: suggestedMax,
+            // LOCKED bounds to prevent Chart.js auto-scaling
+            min: lockedMin,
+            max: lockedMax,
             ticks: { display: false },
             grid: { color: "rgba(255,255,255,0.06)" }
           }
@@ -155,7 +159,7 @@
       }
     });
 
-    // Apply overlay style (fully opaque block)
+    // overlay
     if (overlayDiv) {
       overlayDiv.style.background = overlayMode === "gradient" ? overlayGradient : overlayColor;
       overlayDiv.style.left = "0";
