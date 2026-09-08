@@ -119,7 +119,7 @@
   align-items: center;
   justify-content: center;
 
-  background: rgba(255,255,255,0.05); /* transparent enough for blur */
+  background: rgba(165, 185, 47, 0.774); /* transparent enough for blur */
 
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
