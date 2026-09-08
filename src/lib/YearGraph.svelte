@@ -99,6 +99,7 @@
     max-width: 600px;
     margin: 2rem auto;
     min-height: 350px;
+    z-index: 5; /* ensure wrapper sits above glass background */
   }
 
   /* BLUR APPLIED HERE */
@@ -106,11 +107,13 @@
     filter: blur(35px);
     transition: filter 0.6s ease;
     min-height: 300px;
+    position: relative;
+    z-index: 10; /* ⭐ chart ABOVE glass background */
   }
 
   /* BLUR REMOVED HERE */
   .canvas-container.focused {
-    filter: blur(0px);
+    filter: none; /* ⭐ guaranteed blur removal */
   }
 
   .blur-overlay {
@@ -119,7 +122,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 3;
+    z-index: 20; /* ⭐ overlay ABOVE chart */
     background: rgba(0,0,0,0.25);
     backdrop-filter: blur(4px);
     transition: opacity 0.6s ease;
