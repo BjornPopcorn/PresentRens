@@ -169,7 +169,7 @@
          Do NOT blend back with SourceGraphic (that reintroduces detail). -->
     <filter id="frostFilter" x="-30%" y="-30%" width="160%" height="160%">
       <!-- strong blur to remove high-frequency detail -->
-      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="b"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="b"/>
       <!-- desaturate -->
       <feColorMatrix in="b" type="saturate" values="0.25" result="s"/>
       <!-- slightly reduce contrast (compress highlights/shadows) -->
@@ -179,7 +179,7 @@
         <feFuncB type="linear" slope="0.92" intercept="-0.03"/>
       </feComponentTransfer>
       <!-- small additional blur pass to soften edges -->
-      <feGaussianBlur in="c" stdDeviation="2" result="final"/>
+      <feGaussianBlur in="c" stdDeviation="4" result="final"/>
       <feMerge>
         <feMergeNode in="final"/>
       </feMerge>
@@ -272,7 +272,7 @@
     position: absolute;
     inset: 0;
     z-index: 22;
-    background: rgba(255,255,255,0.18); /* subtle wash */
+    background: rgba(255, 255, 255, 0.748); /* subtle wash */
     pointer-events: none;
     mix-blend-mode: normal;
   }
