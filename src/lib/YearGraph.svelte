@@ -73,8 +73,6 @@
           y: {
             ticks: { display: false },
             grid: { color: "rgba(255,255,255,0.10)" },
-
-            // ⭐ flatten graph
             suggestedMax: 10,
             suggestedMin: 0
           }
@@ -84,34 +82,32 @@
   });
 
   function reveal() {
-    const overlay = document.getElementById("graph-blur-overlay");
-    overlay.classList.add("fade-out");
+    const wrapper = document.getElementById("blur-wrapper");
+    wrapper.classList.add("fade-out");
 
     setTimeout(() => {
-      overlay.style.display = "none";
+      wrapper.style.display = "none";
     }, 800);
   }
 </script>
 
 <div class="graph-wrapper">
 
-  <!-- ⭐ Blur overlay -->
-  <div id="graph-blur-overlay" class="blur-overlay"></div>
-
-  <!-- ⭐ Button above blur -->
-  <button class="reveal-btn" on:click={reveal}>
-    Reveal Song Distribution Graph
-  </button>
+  <!-- ⭐ Wrapper that will animate -->
+  <div id="blur-wrapper" class="blur-wrapper">
+    <div class="blur-overlay"></div>
+    <button class="reveal-btn" on:click={reveal}>
+      Reveal Song Distribution Graph
+    </button>
+  </div>
 
   <div class="canvas-container">
     <canvas bind:this={canvas}></canvas>
   </div>
 </div>
 
-<!-- ⭐ Animation test box OUTSIDE the graph wrapper -->
-<div class="test-box">
-  Hover me to test animation
-</div>
+<!-- Animation test box -->
+<div class="test-box">Hover me</div>
 
 <style>
   .graph-wrapper {
@@ -133,15 +129,11 @@
     display: block;
   }
 
-  /* ⭐ Softer blur */
-  .blur-overlay {
+  /* ⭐ Wrapper fades (NOT the blur itself) */
+  .blur-wrapper {
     position: absolute;
     inset: 0;
     z-index: 20;
-
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(6px);
-
     opacity: 1;
     transition: opacity 0.8s ease;
   }
@@ -150,7 +142,15 @@
     opacity: 0;
   }
 
-  /* ⭐ Button */
+  /* ⭐ Blur stays intact inside wrapper */
+  .blur-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(6px);
+  }
+
+  /* ⭐ Button above blur */
   .reveal-btn {
     position: absolute;
     top: 50%;
