@@ -4,8 +4,8 @@
 
   const { data } = $props();
   let canvas;
-  let blurImg;
-  let blurWrap;
+  let snapImg;
+  let snapWrap;
   let revealBtn;
   let chartInstance;
 
@@ -45,9 +45,7 @@
     const counts = years.map(y => countMap.get(y) || 0);
 
     const smoothedRaw = smooth(counts, 4).map(v => Math.max(0, v));
-
-    // Compress the plotted values so the whole curve is visually smaller in Y
-    const compressFactor = 0.5; // 0.4-0.6 is a good range; lower = flatter
+    const compressFactor = 0.5;
     const smoothed = smoothedRaw.map(v => v * compressFactor);
 
     const rawMax = Math.max(...smoothed, 1);
@@ -107,45 +105,44 @@
     setTimeout(() => {
       try {
         const dataUrl = canvas.toDataURL("image/png");
-        if (blurImg && blurWrap) {
-          blurImg.src = dataUrl;
-          blurWrap.style.display = "block";
+        if (snapImg && snapWrap) {
+          snapImg.src = dataUrl;
+          snapWrap.style.display = "block";
 
-          // Align the snapshot exactly to the canvas container
-          blurImg.style.left = "0";
-          blurImg.style.top = "0";
-          blurImg.style.width = "100%";
-          blurImg.style.height = "100%";
-          blurImg.style.opacity = "1";
+          // Align snapshot exactly to the canvas container
+          snapImg.style.left = "0";
+          snapImg.style.top = "0";
+          snapImg.style.width = "100%";
+          snapImg.style.height = "100%";
+          snapImg.style.opacity = "1";
 
-          // Ensure wrapper covers canvas exactly
-          blurWrap.style.left = "0";
-          blurWrap.style.top = "0";
-          blurWrap.style.width = "100%";
-          blurWrap.style.height = "100%";
+          snapWrap.style.left = "0";
+          snapWrap.style.top = "0";
+          snapWrap.style.width = "100%";
+          snapWrap.style.height = "100%";
 
           // Force layout so transitions start from the correct state
           // eslint-disable-next-line no-unused-expressions
-          blurImg.offsetHeight;
+          snapImg.offsetHeight;
         }
       } catch (e) {
         console.warn("Canvas snapshot failed:", e);
-        if (blurWrap) blurWrap.style.display = "none";
+        if (snapWrap) snapWrap.style.display = "none";
       }
     }, 120);
   });
 
   function reveal() {
-    if (!blurWrap || !blurImg || !revealBtn) return;
+    if (!snapWrap || !snapImg || !revealBtn) return;
 
     // Ensure transitions are set
-    blurWrap.style.transition = "opacity 0.85s cubic-bezier(.2,.9,.2,1)";
-    blurImg.style.transition = "opacity 0.85s cubic-bezier(.2,.9,.2,1)";
+    snapWrap.style.transition = "opacity 0.85s cubic-bezier(.2,.9,.2,1)";
+    snapImg.style.transition = "opacity 0.85s cubic-bezier(.2,.9,.2,1)";
 
     // Use RAF to ensure starting state applied, then start fade
     requestAnimationFrame(() => {
-      blurWrap.style.opacity = "0";
-      blurImg.style.opacity = "0";
+      snapWrap.style.opacity = "0";
+      snapImg.style.opacity = "0";
       revealBtn.style.transition = "opacity 0.28s ease";
       revealBtn.style.opacity = "0";
       revealBtn.style.pointerEvents = "none";
@@ -153,27 +150,50 @@
 
     // Remove elements after animation completes
     setTimeout(() => {
-      if (blurWrap) blurWrap.style.display = "none";
-      if (blurImg) blurImg.style.display = "none";
+      if (snapWrap) snapWrap.style.display = "none";
+      if (snapImg) snapImg.style.display = "none";
       if (revealBtn) revealBtn.style.display = "none";
     }, 900);
   }
 </script>
 
+<!-- SVG filter defs: strong gaussian blur + desaturate + contrast reduction -->
+<svg style="position:absolute; width:0; height:0; pointer-events:none;" aria-hidden="true">
+  <defs>
+    <filter id="frostFilter" x="-20%" y="-20%" width="140%" height="140%">
+      <!-- blur -->
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blurred"/>
+      <!-- desaturate -->
+      <feColorMatrix in="blurred" type="saturate" values="0.25" result="desat"/>
+      <!-- reduce contrast slightly -->
+      <feComponentTransfer in="desat" result="contrast">
+        <feFuncR type="linear" slope="0.95" intercept="-0.03"/>
+        <feFuncG type="linear" slope="0.95" intercept="-0.03"/>
+        <feFuncB type="linear" slope="0.95" intercept="-0.03"/>
+      </feComponentTransfer>
+      <!-- subtle edge softening -->
+      <feBlend in="SourceGraphic" in2="contrast" mode="screen" result="blendOut"/>
+    </filter>
+  </defs>
+</svg>
+
 <div class="graph-wrapper">
   <div class="canvas-container">
-    <!-- wrapper that holds the snapshot and the frosted overlays -->
-    <div bind:this={blurWrap} class="blur-wrap" style="display:none; position:absolute; left:0; top:0;">
+    <!-- wrapper that holds the snapshot and frosted overlays -->
+    <div bind:this={snapWrap} class="snap-wrap" style="display:none; position:absolute; left:0; top:0;">
+      <!-- snapshot image with SVG filter applied -->
       <img
-        bind:this={blurImg}
-        id="graph-blur-image"
-        class="blur-image"
-        alt="blurred snapshot"
+        bind:this={snapImg}
+        id="graph-snap-image"
+        class="snap-image"
+        alt="snapshot"
         style="position:absolute; left:0; top:0;"
       />
 
-      <!-- Frosted glass overlays to create the "can't focus" look -->
+      <!-- semi-white wash to mimic frosted glass scattering -->
       <div class="frost-overlay"></div>
+
+      <!-- grain/noise overlay to break up shapes and make details unreadable -->
       <div class="grain-overlay"></div>
     </div>
 
@@ -214,7 +234,7 @@
   }
 
   /* wrapper covering the canvas; we animate this wrapper's opacity as well as the image */
-  .blur-wrap {
+  .snap-wrap {
     z-index: 20;
     pointer-events: none;
     opacity: 1;
@@ -222,30 +242,29 @@
   }
 
   /* The snapshot image (base for the frosted effect) */
-  .blur-image {
+  .snap-image {
     z-index: 21;
     object-fit: cover;
-    /* strong blur to remove detail */
-    filter: blur(14px) contrast(0.85) saturate(0.85);
-    opacity: 1;
-    transition: opacity 0.85s cubic-bezier(.2,.9,.2,1);
     width: 100%;
     height: 100%;
     display: block;
     position: absolute;
     left: 0;
     top: 0;
+    /* apply SVG filter for true frosted diffusion + desaturation + contrast tweak */
+    filter: url('#frostFilter');
+    opacity: 1;
+    transition: opacity 0.85s cubic-bezier(.2,.9,.2,1);
   }
 
-  /* A semi-opaque white overlay to create the frosted glass "wash" */
+  /* A semi-opaque white overlay to create the frosted glass wash (subtle scattering) */
   .frost-overlay {
     position: absolute;
     inset: 0;
     z-index: 22;
-    background: rgba(255,255,255,0.20); /* light white wash */
+    background: rgba(255,255,255,0.14);
     mix-blend-mode: screen;
     pointer-events: none;
-    backdrop-filter: none; /* avoid using backdrop-filter for animation reliability */
   }
 
   /* Grain/noise overlay to break up shapes and make details unreadable */
